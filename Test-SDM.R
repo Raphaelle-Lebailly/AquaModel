@@ -78,18 +78,20 @@ list.seas.df <- list(vnm.temp.spring.df, vnm.temp.summer.df, vnm.temp.autumn.df,
 
 
 # Snap to grid ------------------------------------------------------------
-ext.temp <- ext(temp.min) # Extent for data (terra object)
-xmin <- ext.temp$xmin
-ymin <- ext.temp$ymin
+
+# The goal is to build the grid scaffold from the environmental data layers to have a base
+# and chose the adequate resolution. After that, the species data can be projected within the
+# different grid cells (presence/absence) and filter the data rightfully.
 
 # [(x-xmin)/delta(x) +0.5]
 
 # Snap to grid function
 SnapToGrid <- function(layer){
+  df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
   # Resolution
-  DimLayer <- dim(layer)
-  ResX <- DimLayer[1]
-  ResY <- DimLayer[2]
+  DimLayer <- dim(layer) 
+  ResX <- DimLayer[1] # Resolution for x
+  ResY <- DimLayer[2] # Resolution for y 
   
   # Extent
   ext.layer <- ext(layer) # Extent for data (terra object)
@@ -103,25 +105,32 @@ SnapToGrid <- function(layer){
   deltaY <- (ymax - ymin)/ResY
   
   # Create grid
-  coordGrid <-list()
-  listX <- c()
-  listY <- c()
-  for(x in 1:ResX){
-    Xgrid <- as.integer(((x-xmin)/deltaX) + 0.5)
-    listX[x] <- c(listX[x-1],Xgrid)
-    for(y in 1:ResY){
-      Ygrid <- as.integer(((y-ymin)/deltaY) + 0.5)
-      listY[y] <- c(listY[y-1],Ygrid)
-    }
-    coordGrid <-list(listX,listY)
-  } 
-  return(coordGrid)
+  df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
+  df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
+  len <- dim(df)
+  df$index <- seq(1,len[1])
+  return(df)
 }
 
+
 # Test the function
-SnapToGrid(temp.min)  
+Grid <- SnapToGrid(temp.min) 
+View(Grid)
+# plot(Grid$snapX, Grid$snapY)
+# range(Grid$snapY)
+
+
+# Adjustment to cells -----------------------------------------------------
+
+# If multiple data by cell, calculate the mean value and assign it to the cell
+# What if NAs?
+
+# Avoid loops and optimize my code
 
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package --> Standardized cleaning
+
+clean_coordinates(mola.df)
+
 is.spatialvalid(mola$data) # Check for valid coordinates
-is.spatialvalid(temp.min.df) 
+is.spatialvalid(vnm.temp.autumn.df) 
