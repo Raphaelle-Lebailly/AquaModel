@@ -124,4 +124,4 @@ SnapToGrid(temp.min)
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package --> Standardized cleaning
 is.spatialvalid(mola$data) # Check for valid coordinates
-
+is.spatialvalid(temp.min.df) 
