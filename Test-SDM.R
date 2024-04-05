@@ -135,8 +135,7 @@ colns <- c('VNM_wc2.1_30s_tmin_1', 'VNM_wc2.1_30s_tmin_2')
 
 temp.min.grid2 <- temp.min.grid %>%
   rowwise() %>%
-  mutate(tmin_mean = mean(c_across(colns), na.rm = T)) %>%
-  select(- colns)
+  mutate(tmin_mean = mean(c_across(colns)))
 
 # indx <- grepl('tmin', colnames(temp.min.grid))
 # indx
