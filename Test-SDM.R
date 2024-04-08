@@ -11,12 +11,13 @@ library(cowplot)
 library(terra)
 library(geodata)
 library(maps)
-library(rgbif)
-library(ggplot2)
-library(RColorBrewer)
+library(rgbif) # Graph
+library(ggplot2) # Graph
+library(RColorBrewer) # Graph
 library(letsR)
-library(dplyr)
+library(dplyr) # Data management
 library(conflicted) # Look for conflicts for functions in different packages
+
 # path <-  "C:/Users/User/Desktop/Internship/Data/Climate"
 
 
@@ -42,23 +43,47 @@ mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' sp
 mola.df <- mola$data # Class "tbl_df"     "tbl"        "data.frame"
 
 
+
+# Subset Mean value ---------------------------------------------------------------------------
+
+mean.df <- function(layer, arg){
+  # Calculate mean value per row 
+  name.col <- paste0("mean_", arg)
+  sub.df.mean1 <-  layer %>%
+    mutate(!!name.col :=  rowMeans(dplyr::select(., contains(arg)), na.rm = FALSE)) 
+  # Subset without raw data
+  sub.df.mean2 <- sub.df.mean1 %>%
+    dplyr::select(., -contains(arg))
+  # Final df
+  return(sub.df.mean2)
+}
+
+
+
+
+# Test with min temperature raster
+temp.min.mean <- mean.df(temp.min.grid, "tmin")
+
 # Overlay -----------------------------------------------------------------
-# name.seas <- c("Spring", "Summer", "Autumn", "Winter")
-# 
-# # Temperature range
-# range.temp <- as.data.frame(minmax(temp.min))
-# min.temp <- min(range.temp)
-# max.temp <- max(range.temp)
-# 
-# # Plot
-# x11()
-# par(mfrow=c(2,2))
-# for (i in seq_along(seas)) {
-#   ov <- mask(seas[[i]], borders.vnm)
-#   plot(ov, zlim=c(min.temp,max.temp),
-#        main = paste("Average min temperature in Vietnam in", name.seas[i]))
-#   map("world", add=TRUE)
-# }
+
+# Function to visualize the raster layer 
+Mapplot <- function(layer){
+  # Variable range 
+  range.var <- as.data.frame(minmax(layer))
+  min.var <- min(range.layer)
+  max.var <- max(range.layer)
+  
+  # Plot
+  x11()
+  # par(mfrow=c(1,1))
+  for (i in val_mean) {
+    ov <- mask(seas[[i]], borders.vnm)
+    plot(ov, zlim=c(min.var,max.var),
+         main = paste(c("Average","in" ), name.seas[i]))
+    map("world", add=TRUE)
+  }
+  
+}
 
 
 # Dataframe ---------------------------------------------------------------
@@ -129,16 +154,12 @@ View(temp.min.grid)
 
 # Example with another raster with another resolution
 temp.max <- worldclim_country("Vietnam", var = "tmax", res = 0.5, path=tempdir()) # Min temperature, SPATRASTER
-wind <- worldclim_country("Vietnam", var = "wind", res = 0.5, path=tempdir())
+wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
 
-# Subset Mean value ---------------------------------------------------------------------------
 
-# Calculate mean value per row 
-temp.min.grid2 <- temp.min.grid %>%
-  mutate(temp_min_mean = rowMeans(dplyr::select(., contains("tmin")), na.rm = FALSE)) 
-# Subset without raw data
-temp.min.mean <- temp.min.grid2 %>%
-  dplyr::select(., -contains("tmin"))
+
+
+
 
 
 
