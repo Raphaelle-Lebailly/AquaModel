@@ -50,40 +50,43 @@ temp.min.df <- as.data.frame(temp.min, xy = TRUE) # DATAFRAME
 # [(x-xmin)/delta(x) +0.5]
 
 # Snap to grid function (manually)
-SnapToGrid <- function(layer){
+
+# Define a base raster that defines the scaffold for the grid
+SnapToBase <- function(layer){
   df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
   # Resolution
-  DimLayer <- dim(layer) 
-  ResX <- DimLayer[1] # Resolution for x
-  ResY <- DimLayer[2] # Resolution for y 
-  
+  Dim <- dim(layer) 
+  ResX <- Dim[1] # Resolution for x
+  ResY <- Dim[2] # Resolution for y 
+  DimLayer <- list(ResX, ResY)
   # Extent
-  ext.layer <- ext(layer) # Extent for data (terra object)
-  xmin <- ext.layer$xmin
-  ymin <- ext.layer$ymin
-  xmax <- ext.layer$xmax
-  ymax <- ext.layer$ymax
-  
+  ext <- ext(layer) # Extent for data (terra object)
+  xmin <- ext$xmin
+  ymin <- ext$ymin
+  xmax <- ext$xmax
+  ymax <- ext$ymax
+  ext.layer <- list(xmin, ymin, xmax, ymax)
   #Delta
   deltaX <- (xmax - xmin)/ResX
   deltaY <- (ymax - ymin)/ResY 
-  
   # Create grid
   df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
   df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
   len <- dim(df)
   df$index <- seq(1,len[1])
-  return(df)
+  # Return
+  list(df, DimLayer, ext.layer)
 }
 
 
 # Test the function
-temp.min.grid<- SnapToGrid(temp.min) 
+temp.min.grid <- SnapToBase(temp.min) 
 View(temp.min.grid)
-# plot(Grid$snapX, Grid$snapY)
-# range(Grid$snapY)
 
-
+# Retrieve the data
+temp.min.grid <- temp.min.grid[[1]]
+temp.min.res <- temp.min.grid[[2]]
+temp.min.ext <- temp.min.grid[[3]]
 
 # Subset Mean value ---------------------------------------------------------------------------
 
@@ -104,54 +107,86 @@ mean.df <- function(layer, arg){
 
 # Test with min temperature raster
 temp.min.mean <- mean.df(temp.min.grid, "tmin")
-View(temp.min.mean) # OK 
+View(temp.min.mean) # OK
 
-# Overlay -----------------------------------------------------------------
-
-# Function to visualize the raster layer 
-Mapplot <- function(layer, borders){
-  # Variable range 
-  range.layer <- as.data.frame(minmax(layer))
-  min.var <- min(range.layer)
-  max.var <- max(range.layer)
-  
-  # Plot
-  x11()
-  # par(mfrow=c(1,1))
-  col <- layer %>% 
-    dplyr::select(., contains("mean"))
-  for (i in ) {
-    ov <- mask(i, borders)
-    plot(ov, zlim=c(min.var,max.var),
-         main = paste(c("Average value","in" )))
-    map("world", add=TRUE)
-  }
-  
-}
-
-Mapplot(temp.min, borders.vnm)
+# # Overlay -----------------------------------------------------------------
+# 
+# # Function to visualize the raster layer 
+# Mapplot <- function(layer, borders){
+#   # Variable range 
+#   range.layer <- as.data.frame(minmax(layer))
+#   min.var <- min(range.layer)
+#   max.var <- max(range.layer)
+#   # Plot
+#   # x11()
+#   # par(mfrow=c(1,1))
+#   col <- layer %>% 
+#     dplyr::select(., contains("mean"))
+#   ov <- mask(col, borders)
+#   plot(ov, zlim=c(min.var,max.var),
+#     main = paste(c("Average value","in" )))
+#     map("world", add=TRUE)
+# }
+# 
+# Mapplot(temp.min.mean, borders.vnm)
+# 
+# col <-  temp.min.mean %>% 
+#   dplyr::select(., contains("mean"))
+# colname <-colnames(col)
+# head(col)
+# 
+# Ne fonctionne pas, a voir plus tard (juste de la visualisation en soi)
 
 # Adjustment to cells -----------------------------------------------------
 
-# If multiple data by cell, calculate the mean value and assign it to the cell
-# What if NAs?
+# Use tapply function
 
 # Example with another raster with another resolution
 temp.max <- worldclim_country("Vietnam", var = "tmax", res = 0.5, path=tempdir()) # Min temperature, SPATRASTER
 wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
 
 
+# Index = (Sx -1).ny + Sy
+# Base$NewVector[v2[names[v]]]
 
 
+# Snaptogrid secon layer
+# Function Snaptogrid to change
+# Parameters for base raster
+base.res <- temp.min.res
+base.ext <- temp.min.ext
 
+SnapToGrid <- function(layer, base){
+  df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
+  # Resolution
+  Dim <- dim(base) 
+  ResX <- Dim[1] # Resolution for x
+  ResY <- Dim[2] # Resolution for y 
+  DimLayer <- list(ResX, ResY)
+  # Extent
+  ext <- ext(base) # Extent for data (terra object)
+  xmin <- ext$xmin
+  ymin <- ext$ymin
+  xmax <- ext$xmax
+  ymax <- ext$ymax
+  ext.layer <- list(xmin, ymin, xmax, ymax)
+  #Delta
+  deltaX <- (xmax - xmin)/ResX
+  deltaY <- (ymax - ymin)/ResY 
+  # Create grid
+  df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
+  df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
+  len <- dim(df)
+  df$index <- seq(1,len[1])
+  
+  return(df)
+}
 
-
-
+tapply()
 
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package --> Standardized cleaning
 
 clean_coordinates(mola.df)
-
 is.spatialvalid(mola$data) # Check for valid coordinates
 is.spatialvalid(vnm.temp.autumn.df) 
