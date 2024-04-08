@@ -109,23 +109,27 @@ View(temp.min.mean) # OK
 # Overlay -----------------------------------------------------------------
 
 # Function to visualize the raster layer 
-Mapplot <- function(layer){
+Mapplot <- function(layer, borders){
   # Variable range 
-  range.var <- as.data.frame(minmax(layer))
+  range.layer <- as.data.frame(minmax(layer))
   min.var <- min(range.layer)
   max.var <- max(range.layer)
   
   # Plot
   x11()
   # par(mfrow=c(1,1))
-  for (i in val_mean) {
-    ov <- mask(seas[[i]], borders.vnm)
+  col <- layer %>% 
+    dplyr::select(., contains("mean"))
+  for (i in ) {
+    ov <- mask(i, borders)
     plot(ov, zlim=c(min.var,max.var),
-         main = paste(c("Average","in" ), name.seas[i]))
+         main = paste(c("Average value","in" )))
     map("world", add=TRUE)
   }
   
 }
+
+Mapplot(temp.min, borders.vnm)
 
 # Adjustment to cells -----------------------------------------------------
 
