@@ -15,7 +15,6 @@ library(rgbif) # Graph
 library(ggplot2) # Graph
 library(RColorBrewer) # Graph
 library(letsR)
-library(dplyr) # Data management
 library(conflicted) # Look for conflicts for functions in different packages
 
 # path <-  "C:/Users/User/Desktop/Internship/Data/Climate"
@@ -29,14 +28,6 @@ borders.vnm <- gadm(country = "VNM", level = 0, path=tempdir()) # Borders, SPATV
 # Climate data
 temp.min <- worldclim_country("Vietnam", var = "tmin", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
 
-# ## Per seasons
-# vnm.temp.spring <- mean(temp.min[[3]], temp.min[[4]], temp.min[[5]])
-# vnm.temp.summer <- mean(temp.min[[6]], temp.min[[7]], temp.min[[8]])
-# vnm.temp.autumn <- mean(temp.min[[9]], temp.min[[10]],temp.min[[11]])
-# vnm.temp.winter <- mean(temp.min[[12]], temp.min[[1]], temp.min[[2]])
-# 
-# seas <- list(vnm.temp.spring, vnm.temp.summer, vnm.temp.autumn, vnm.temp.winter)
-
 # Species data
 mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' species, GBIF_DATA
 # Meta and data
@@ -44,64 +35,10 @@ mola.df <- mola$data # Class "tbl_df"     "tbl"        "data.frame"
 
 
 
-# Subset Mean value ---------------------------------------------------------------------------
-
-mean.df <- function(layer, arg){
-  # Calculate mean value per row 
-  name.col <- paste0("mean_", arg)
-  sub.df.mean1 <-  layer %>%
-    mutate(!!name.col :=  rowMeans(dplyr::select(., contains(arg)), na.rm = FALSE)) 
-  # Subset without raw data
-  sub.df.mean2 <- sub.df.mean1 %>%
-    dplyr::select(., -contains(arg))
-  # Final df
-  return(sub.df.mean2)
-}
-
-
-
-
-# Test with min temperature raster
-temp.min.mean <- mean.df(temp.min.grid, "tmin")
-
-# Overlay -----------------------------------------------------------------
-
-# Function to visualize the raster layer 
-Mapplot <- function(layer){
-  # Variable range 
-  range.var <- as.data.frame(minmax(layer))
-  min.var <- min(range.layer)
-  max.var <- max(range.layer)
-  
-  # Plot
-  x11()
-  # par(mfrow=c(1,1))
-  for (i in val_mean) {
-    ov <- mask(seas[[i]], borders.vnm)
-    plot(ov, zlim=c(min.var,max.var),
-         main = paste(c("Average","in" ), name.seas[i]))
-    map("world", add=TRUE)
-  }
-  
-}
-
-
 # Dataframe ---------------------------------------------------------------
 
 # All data
 temp.min.df <- as.data.frame(temp.min, xy = TRUE) # DATAFRAME
-
-# # Per season
-# vnm.temp.spring.df <- as.data.frame(vnm.temp.spring, xy = TRUE)
-# names(vnm.temp.spring.df)[3] <- "value"
-# vnm.temp.summer.df <- as.data.frame(vnm.temp.summer, xy = TRUE)
-# names(vnm.temp.summer.df)[3] <- "value"
-# vnm.temp.autumn.df <- as.data.frame(vnm.temp.autumn, xy = TRUE)
-# names(vnm.temp.autumn.df)[3] <- "value"
-# vnm.temp.winter.df <- as.data.frame(vnm.temp.winter, xy = TRUE)
-# names(vnm.temp.winter.df)[3] <- "value"
-# 
-# list.seas.df <- list(vnm.temp.spring.df, vnm.temp.summer.df, vnm.temp.autumn.df, vnm.temp.winter.df)
 
 
 # Snap to grid ------------------------------------------------------------
@@ -146,6 +83,49 @@ View(temp.min.grid)
 # plot(Grid$snapX, Grid$snapY)
 # range(Grid$snapY)
 
+
+
+# Subset Mean value ---------------------------------------------------------------------------
+
+mean.df <- function(layer, arg){
+  name.col <- paste0("mean_", arg)
+  # Calculate mean value per row 
+  sub.df.mean1 <-  layer %>%
+    mutate(name.col =  rowMeans(dplyr::select(., contains(arg)), na.rm = FALSE)) 
+  # Subset without raw data
+  sub.df.mean2 <- sub.df.mean1 %>%
+    dplyr::select(., -contains(arg))
+  # Rename column
+  names(sub.df.mean2)[names(sub.df.mean2) == 'name.col'] <- toString(name.col)
+  # Final df
+  return(sub.df.mean2)
+}
+
+
+# Test with min temperature raster
+temp.min.mean <- mean.df(temp.min.grid, "tmin")
+View(temp.min.mean) # OK 
+
+# Overlay -----------------------------------------------------------------
+
+# Function to visualize the raster layer 
+Mapplot <- function(layer){
+  # Variable range 
+  range.var <- as.data.frame(minmax(layer))
+  min.var <- min(range.layer)
+  max.var <- max(range.layer)
+  
+  # Plot
+  x11()
+  # par(mfrow=c(1,1))
+  for (i in val_mean) {
+    ov <- mask(seas[[i]], borders.vnm)
+    plot(ov, zlim=c(min.var,max.var),
+         main = paste(c("Average","in" ), name.seas[i]))
+    map("world", add=TRUE)
+  }
+  
+}
 
 # Adjustment to cells -----------------------------------------------------
 
