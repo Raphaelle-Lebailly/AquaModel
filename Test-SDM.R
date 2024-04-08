@@ -52,7 +52,7 @@ temp.min.df <- as.data.frame(temp.min, xy = TRUE) # DATAFRAME
 # Snap to grid function (manually)
 
 # Define a base raster that defines the scaffold for the grid
-SnapToBase <- function(layer){
+SnapToGrid <- function(layer){
   df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
   # Resolution
   Dim <- dim(layer) 
@@ -74,13 +74,13 @@ SnapToBase <- function(layer){
   df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
   len <- dim(df)
   df$index <- seq(1,len[1])
-  # Return
+  #Ret
   list(df, DimLayer, ext.layer)
 }
 
 
 # Test the function
-temp.min.grid <- SnapToBase(temp.min) 
+temp.min.grid <- SnapToGrid(temp.min) 
 View(temp.min.grid)
 
 # Retrieve the data
@@ -156,7 +156,7 @@ wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
 base.res <- temp.min.res
 base.ext <- temp.min.ext
 
-SnapToGrid <- function(layer, base){
+Gridify <- function(layer, base){
   df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
   # Resolution
   Dim <- dim(base) 
