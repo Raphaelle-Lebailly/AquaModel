@@ -15,6 +15,8 @@ library(rgbif)
 library(ggplot2)
 library(RColorBrewer)
 library(letsR)
+library(dplyr)
+library(conflicted) # Look for conflicts for functions in different packages
 # path <-  "C:/Users/User/Desktop/Internship/Data/Climate"
 
 
@@ -129,28 +131,16 @@ View(temp.min.grid)
 temp.max <- worldclim_country("Vietnam", var = "tmax", res = 0.5, path=tempdir()) # Min temperature, SPATRASTER
 wind <- worldclim_country("Vietnam", var = "wind", res = 0.5, path=tempdir())
 
-# --------------------------------------------------------------------------------
+# Subset Mean value ---------------------------------------------------------------------------
 
-colns <- c('VNM_wc2.1_30s_tmin_1', 'VNM_wc2.1_30s_tmin_2')
-
+# Calculate mean value per row 
 temp.min.grid2 <- temp.min.grid %>%
-  rowwise() %>%
-  mutate(tmin_mean = mean(c_across(colns)))
+  mutate(temp_min_mean = rowMeans(dplyr::select(., contains("tmin")), na.rm = FALSE)) 
+# Subset without raw data
+temp.min.mean <- temp.min.grid2 %>%
+  dplyr::select(., -contains("tmin"))
 
-# indx <- grepl('tmin', colnames(temp.min.grid))
-# indx
-# temp.min.grid$tmin_mean <- apply(temp.min.grid[indx], mean)
-# 
-# # Goal is to add the variables in the same df
-# # Calculate mean per variable and transform it into the name of the variable
-# 
-# cols_tmin <- grep("tmin", names(temp.min.grid), value = TRUE)
-# temp.min.grid$tmin_mean <- rowMeans(dataset[cols_tmin], na.rm = TRUE)
-# 
-# dataset <- temp.min.grid %>%
-#   rowwise() %>%
-#   mutate(tmin_mean = rowMeans(select(., all_of(cols_tmin)), na.rm = TRUE))
-# 
+
 
 
 # Data cleaning -----------------------------------------------------------
