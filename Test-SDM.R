@@ -2,22 +2,24 @@ setwd("C:/Users/User/Desktop/Internship/Data")
 
 
 # Packages ----------------------------------------------------------------
+# Data Management
 library(tidyverse)
-# library(tiff)
-library(raster)
-library(CoordinateCleaner) # Cleaning the data
-library(sf) 
+library(conflicted) 
+library(letsR)
+# Plot Maps
+library(plotly)
+library(maps)
+library(rgbif) 
+library(ggplot2) 
+library(RColorBrewer) 
 library(cowplot)
+# Spatial data
+#library(raster) # Obsolete
 library(terra)
 library(geodata)
-library(maps)
-library(rgbif) # Graph
-library(ggplot2) # Graph
-library(RColorBrewer) # Graph
-library(letsR)
-library(conflicted) # Look for conflicts for functions in different packages
-
-# path <-  "C:/Users/User/Desktop/Internship/Data/Climate"
+library(sf) 
+# library(raster)
+library(CoordinateCleaner) 
 
 
 # Data importation --------------------------------------------------------
@@ -110,17 +112,17 @@ temp.min.mean <- mean.df(temp.min.grid, "tmin")
 View(temp.min.mean) # OK
 
 # # Overlay -----------------------------------------------------------------
-# 
-# # Function to visualize the raster layer 
+
+# # Function to visualize the raster layer
 # Mapplot <- function(layer, borders){
-#   # Variable range 
+#   # Variable range
 #   range.layer <- as.data.frame(minmax(layer))
 #   min.var <- min(range.layer)
 #   max.var <- max(range.layer)
 #   # Plot
 #   # x11()
 #   # par(mfrow=c(1,1))
-#   col <- layer %>% 
+#   col <- layer %>%
 #     dplyr::select(., contains("mean"))
 #   ov <- mask(col, borders)
 #   plot(ov, zlim=c(min.var,max.var),
@@ -130,11 +132,11 @@ View(temp.min.mean) # OK
 # 
 # Mapplot(temp.min.mean, borders.vnm)
 # 
-# col <-  temp.min.mean %>% 
+# col <-  temp.min.mean %>%
 #   dplyr::select(., contains("mean"))
 # colname <-colnames(col)
 # head(col)
-# 
+
 # Ne fonctionne pas, a voir plus tard (juste de la visualisation en soi)
 
 # Adjustment to cells -----------------------------------------------------
@@ -142,22 +144,48 @@ View(temp.min.mean) # OK
 # Use tapply function
 
 # Example with another raster with another resolution
-temp.max <- worldclim_country("Vietnam", var = "tmax", res = 0.5, path=tempdir()) # Min temperature, SPATRASTER
-wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
+# temp.max <- worldclim_country("Vietnam", var = "tmax", res = 0.5, path=tempdir()) # Min temperature, SPATRASTER
+# countries <- c("Vietnam", "Thailand")
+wind <- worldclim_country("Thailand", var = "wind", res = 10, path=tempdir())
 
+wd.df <- as.data.frame(wind, xy = T)
+wd.df.mean <- mean.df(wd.df, "wind")
+View(wd.df.mean)
+
+# Bidouillage
+range.layer <- as.data.frame(minmax(wind))
+min.var <- min(range.layer)
+max.var <- max(range.layer)
+col <- wd.df.mean %>%
+  dplyr::select(., contains("mean"))
+borders.tha <- gadm(country = "THA", level = 0, path=tempdir()) # Borders, SPATVECTOR
+ov <- terra::mask(wind, borders.tha) # Use SpetRaster object and borders layer
+# Calculer la moyenne une fois que le masque est pose
+ov.df <- as.data.frame(ov, xy = TRUE)
+wd.mean.mask <- mean.df(ov.df, "wind")
+x11()
+plot(ov)
+# , zlim=c(min.var,max.var)
+map("world", add=TRUE)
+
+
+--------------------------------------------------------------------
 
 # Index = (Sx -1).ny + Sy
 # Base$NewVector[v2[names[v]]]
 
 
-# Snaptogrid secon layer
+# Snaptogrid second layer
 # Function Snaptogrid to change
 # Parameters for base raster
 base.res <- temp.min.res
 base.ext <- temp.min.ext
 
 Gridify <- function(layer, base){
-  df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
+  lay <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
+  base <- as.data.frame(base,xy=T)
+  
+  ## BASE PARAMETERS
   # Resolution
   Dim <- dim(base) 
   ResX <- Dim[1] # Resolution for x
@@ -182,7 +210,33 @@ Gridify <- function(layer, base){
   return(df)
 }
 
+SnapToGrid()
+
 tapply()
+
+
+# Bidouillage standardisation en grille -----------------------------------------
+x1 <- runif(10,1,20)
+y1 <- runif(10,50,80)
+val1 <- sample(1:50, 10)
+df1 <- data.frame(x1, y1, val1)
+df1
+x2 <- sample(1:100, 20)
+y2 <- sample(200:300, 20)
+val2 <- sample(1:50, 20)
+df2 <- data.frame(x2, y2, val2)
+df2
+
+dffinal <- terra::resample(temp.min, wind, method = "average")
+
+df <- as.data.frame(dffinal, xy = TRUE)
+View(df)
+
+# 2 rasters pas dans les memes conditions (longeur, unites, range etc.)
+
+
+# On essaye de les faire correspondre. On prend le rater 1 comme base.
+
 
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package --> Standardized cleaning
