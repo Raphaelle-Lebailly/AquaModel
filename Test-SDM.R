@@ -1,6 +1,6 @@
 # setwd("C:/Users/User/Desktop/Internship/Data")
 
-# Packages ----------------------------------------------------------------
+# PACKAGES ----------------------------------------------------------------
 # Data Management
 library(tidyverse)
 library(conflicted) 
@@ -20,10 +20,10 @@ library(sf)
 library(CoordinateCleaner) 
 
 
-# Data importation --------------------------------------------------------
+# DATA IMPORTATION --------------------------------------------------------
 
 # Geographical data
-borders.vnm <- gadm(country = "VNM", level = 0, path=tempdir()) # Borders, SPATVECTOR
+# borders.vnm <- gadm(country = "VNM", level = 0, path=tempdir()) # Borders, SPATVECTOR
 # Climate data
 temp.min <- worldclim_country("Vietnam", var = "tmin", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
 wind <- worldclim_country("Thailand", var = "wind", res = 10, path=tempdir())
@@ -33,10 +33,9 @@ mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' sp
 # mola.df <- mola$data # Class "tbl_df"     "tbl"        "data.frame" ; for later
 
 
-# Functions ---------------------------------------------------------------
+# FUNCTIONS ---------------------------------------------------------------
 
 ### Snap to grid ------------------------------------------------------------
-
 # The goal is to build the grid scaffold from the environmental data layers to have a base
 # and chose the adequate resolution. After that, the species data can be projected within the
 # different grid cells (presence/absence) and filter the data rightfully.
@@ -67,12 +66,12 @@ SnapToGrid <- function(layer){
   df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
   len <- dim(df)
   df$index <- seq(1,len[1])
-  #Ret
-  list(df, DimLayer, ext.layer)
+  # Return
+  return(df)
+  # list(df, DimLayer, ext.layer)
 }
 
 ### Subset Mean value ---------------------------------------------------------------------------
-
 mean.df <- function(layer, arg){
   name.col <- paste0("mean_", arg)
   # Calculate mean value per row 
@@ -89,9 +88,10 @@ mean.df <- function(layer, arg){
 
 
 ### Overlay -----------------------------------------------------------------
-
 # Function to visualize the raster layer
-Mapplot <- function(layer, borders){
+Mapplot <- function(layer, ISO){ # "borders" = ISOCODE => importer le spatvector en fonction
+  # Geographical data
+  borders <- gadm(country = ISO, level = 0, path=tempdir()) # Borders, SPATVECTOR
   # Variable range
   range.layer <- as.data.frame(minmax(layer))
   min.var <- min(range.layer)
@@ -117,23 +117,59 @@ head(col)
 # Ne fonctionne pas, a voir plus tard (juste de la visualisation en soi)
 
 
-# Resample the rasters  ----------------------------------------------------------------
+
+# TESTING -----------------------------------------------------------------
+
+# Resample
 # Use the resample function of the 'terra' package. Adapts the geometry of one raster to another.
 # Has to be a SpatRaster format.
-# Chose the adapted method for the resampling.
-wd.df <- as.data.frame(wind, xy = T)
-wd.df.mean <- mean.df(wd.df, "wind")
-View(wd.df.mean)
-
 # Reshape the geometry of the wind layer (with temp.min as geometry reference)
 wind.rsp <- terra::resample(wind, temp.min, method = "bilinear") 
 # Need to verify if the method is adapted to our case.
 
+# Snap to grid
+tmin.stg <- SnapToGrid(temp.min)
+wind.stg <- SnapToGrid(wind.rsp)
+layers <- c(temp.min, wind.rsp)
+lay.df <- as.data.frame(layers, xy = T)
+View(lay.df)
+
+wtmin <- SnapToGrid(layers) # OK
+View(wtmin)
+dim(wtmin) # 1159967      29
+wind.df <- as.data.frame(wind, xy = T)
+dim(wind.df) # 1208377      14
+wind.stgdf <- as.data.frame(wind.stg, xy = T)
+dim(wind.stgdf) # 571137     17
+dim(tmin.stg) # 1159967      17
+
+
+# Dimensions differents mais surement du au resampling
+# Valeurs en commun.... weird ??? Plotter l'overlap ==> voir comment faire + tard
+
+# Check the coverage of data
+x11()
+plot(wind.stg$x, wind.stg$y)
+plot(tmin.stg$x, tmin.stg$y)
+plot(wtmin$x, wtmin$y)
+# Final dataset = same as vietnam (base raster) ==> Take not only the first layer as base but also enlarge 
+# For the other countries
+
+# Chose the adapted method for the resampling.
+wd.df <- as.data.frame(wind, xy = T)
+varname <- c("wind","tmin")
+wtmin.mean <- mean.df(wtmin, varname)
+View(wtmin.mean)
+
+
+# Finish overlay function to have a visual render of the final dataset
+
+# MINMAX !!!!! Omits a lot of data that are not in the other layer......!
+# Take the max as the big picture 
 
 
 
-
-# # Test the function
+### Test the function -------------------------------------------------------------------
 # temp.min.grid <- SnapToGrid(temp.min) 
 # View(temp.min.grid)
 # 
@@ -144,7 +180,7 @@ wind.rsp <- terra::resample(wind, temp.min, method = "bilinear")
 
 
 
-# Test with min temperature raster
+# 
 temp.min.mean <- mean.df(temp.min.grid, "tmin")
 View(temp.min.mean) # OK
 
