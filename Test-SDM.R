@@ -17,6 +17,7 @@ library(cowplot)
 library(terra)
 library(geodata) # Import environmental data
 library(sf) 
+library(leaflet) # Web mapping
 library(CoordinateCleaner) 
 
 
@@ -54,6 +55,35 @@ SnapToGrid <- function(layer){
   DimLayer <- list(ResX, ResY)
   # Extent
   ext <- ext(layer) # Extent for data (terra object)
+  xmin <- ext$xmin
+  ymin <- ext$ymin
+  xmax <- ext$xmax
+  ymax <- ext$ymax
+  ext.layer <- list(xmin, ymin, xmax, ymax)
+  #Delta
+  deltaX <- (xmax - xmin)/ResX
+  deltaY <- (ymax - ymin)/ResY 
+  # Create grid
+  df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
+  df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
+  len <- dim(df)
+  df$index <- seq(1,len[1])
+  # Return
+  return(df)
+  # list(df, DimLayer, ext.layer)
+}
+
+# Testing for new datasets
+# Avec le dataframe en entrée qui correspond au merge des couches 
+STG <- function(df, baselayer){
+  df.base <- as.data.frame(baselayer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
+  # Resolution base layer
+  Dim <- dim(baselayer) 
+  ResX <- Dim[1] # Resolution for x
+  ResY <- Dim[2] # Resolution for y 
+  DimLayer <- list(ResX, ResY)
+  # Extent base layer => sert a ponderer mais pas a restreindre l'espace
+  ext <- ext(baselayer) # Extent for data (terra object)
   xmin <- ext$xmin
   ymin <- ext$ymin
   xmax <- ext$xmax
@@ -177,7 +207,19 @@ dim(tmin.stg) # 1159967      17
 
 # Check the coverage of data
 x11()
-plot(wind.stg$x, wind.stg$y)
+par(mfrow= c(1,2))
+plot(wind[[1]], main = "Wind in Thailand")
+terra::plot(temp.min[[1]], main = "Min temp in Vietnam")
+
+ext(wind)
+ext(temp.min)
+# NOT SAME EXTENT ==> have the biggest extent to show all data
+windmean <- mean.df(wind.df, "wind")
+x11()
+# ggplot(windmean) %>%
+crs.wind  <- crs(wind)
+
+plot_coordinates_on_map(windmean, col_x, col_y, projection, ...)
 plot(tmin.stg$x, tmin.stg$y)
 plot(wtmin$x, wtmin$y)
 # Final dataset = same as vietnam (base raster) ==> Take not only the first layer as base but also enlarge 
