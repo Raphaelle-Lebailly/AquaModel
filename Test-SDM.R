@@ -26,6 +26,7 @@ library(CoordinateCleaner)
 # borders.vnm <- gadm(country = "VNM", level = 0, path=tempdir()) # Borders, SPATVECTOR
 # Climate data
 temp.min <- worldclim_country("Vietnam", var = "tmin", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
+temp.max <- worldclim_country("Vietnam", var = "tmax", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
 wind <- worldclim_country("Thailand", var = "wind", res = 10, path=tempdir())
 # Species data
 mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' species, GBIF_DATA
@@ -126,13 +127,40 @@ head(col)
 # Reshape the geometry of the wind layer (with temp.min as geometry reference)
 wind.rsp <- terra::resample(wind, temp.min, method = "bilinear") 
 # Need to verify if the method is adapted to our case.
+tmax.rsp <- terra::resample(temp.max, temp.min, method = "bilinear") 
 
-# Snap to grid
+# Merge dataframes (before the snap to grid)
+tmin.df <- as.data.frame(temp.min,xy=T)
+tmax.df <- as.data.frame(tmax.rsp,xy=T)
+wind.df <- as.data.frame(wind.rsp,xy=T)
+
+test1 <- tmin.df %>% 
+  left_join(tmax.df)
+View(test1)
+dim(test1)
+dim(tmin.df)
+dim(tmax.df)
+
+# Semble OK
+test2 <- tmin.df %>% 
+  inner_join(tmax.df)
+View(test2)
+dim(test2)
+
+which(is.na(test1)) # Pas de NA, normal car tout colle normalement
+
+## Avec wind ---> different car en thailande
+test3 <- tmin.df %>% 
+  left_join(wind.df)
+View(test3)
+dim(test3)
+
+
+# Snatest1# Snap to grid
 tmin.stg <- SnapToGrid(temp.min)
 wind.stg <- SnapToGrid(wind.rsp)
-layers <- c(temp.min, wind.rsp)
-lay.df <- as.data.frame(layers, xy = T)
-View(lay.df)
+
+
 
 wtmin <- SnapToGrid(layers) # OK
 View(wtmin)
@@ -160,13 +188,6 @@ wd.df <- as.data.frame(wind, xy = T)
 varname <- c("wind","tmin")
 wtmin.mean <- mean.df(wtmin, varname)
 View(wtmin.mean)
-
-
-# Finish overlay function to have a visual render of the final dataset
-
-# MINMAX !!!!! Omits a lot of data that are not in the other layer......!
-# Take the max as the big picture 
-
 
 
 ### Test the function -------------------------------------------------------------------
