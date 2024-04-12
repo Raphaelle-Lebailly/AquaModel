@@ -89,6 +89,8 @@ SnapToGrid <- function(layer){
 }
 ```
 
+==> Not sure snap to grid is working fully for the dataset we want 
+
         layer.stg (or final.df)
 
 #### 5. Plot the layers
