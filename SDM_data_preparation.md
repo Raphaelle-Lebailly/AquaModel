@@ -21,6 +21,8 @@ The method will depend on the nature of the variable itself.
 - Bilinear: **Continuous**
 - Cubic: **Continuous**
 
+        layer.rsp
+
 #### 2. Mean value
 
 The a fine time scale isn't relevant in our case. The values per month are not interesting, so we compute the mean and replace the raw data by a mean value column into the new dataset. 
@@ -40,6 +42,7 @@ mean.df <- function(layer, arg){
   return(sub.df.mean2)
 }
 ```
+        layer.mn
 
 #### 3. Merge dataframes
 
@@ -50,6 +53,8 @@ When the geometry is right for every layer and the mean value is calculated, we 
 ```
 *use the dplyr package*. The common columns are x and y.
 No matter if x and y are different, anyways will be better organized thanks to snap to grid function.
+
+        layer.mg
 
 #### 4. Snap to grid
 
@@ -83,6 +88,8 @@ SnapToGrid <- function(layer){
   # list(df, DimLayer, ext.layer)
 }
 ```
+
+        layer.stg (or final.df)
 
 #### 5. Plot the layers
 
