@@ -80,21 +80,23 @@ mean.df <- function(layer, arg){
   df <- as.data.frame(layer, xy =T)
   name.col <- paste0("mean_", arg)
   # Calculate mean value per row 
-  sub.df.mean1 <-  df %>%
+  sub.df1 <-  df %>%
     mutate(name.col =  rowMeans(dplyr::select(., contains(arg)), na.rm = FALSE)) 
   # Subset without raw data
-  sub.df.mean2 <- sub.df.mean1 %>%
+  sub.df2 <- sub.df1 %>%
     dplyr::select(., -contains(arg))
   # Rename column
-  names(sub.df.mean2)[names(sub.df.mean2) == 'name.col'] <- toString(name.col)
+  names(sub.df2)[names(sub.df2) == 'name.col'] <- toString(name.col)
+  # Retransform as spatraster
+  layer2 <- as_spatraster(sub.df2, crs = "EPSG:4326")
   # Final df
-  return(sub.df.mean2)
+  return(layer2)
 }
 
 
 ### Overlay -----------------------------------------------------------------
 # Function to visualize the raster layer
-Mapplot <- function(layer, var, ISO){ # borders = ISOCODE => importer le spatvector en fonction
+Mapplot <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector en fonction
   if(typeof(layer) != "S4"){
     layer <- as_spatraster(layer, crs = "EPSG:4326")
   }
@@ -105,26 +107,15 @@ Mapplot <- function(layer, var, ISO){ # borders = ISOCODE => importer le spatvec
   min.var <- min(range.layer)
   max.var <- max(range.layer)
   # Plot
-  # x11()
-  # par(mfrow=c(1,1))
-  col <- layer %>%
-    dplyr::select(., contains(var))
-  ov <- mask(col, borders)
+  x11()
+  par(mfrow=c(1,1))
+  ov <- mask(layer, borders)
   plot(ov, zlim=c(min.var,max.var),
-    main = paste(c("Average value","in" )))
-    map("world", add=TRUE)
+    main = paste(c(names(tmin), ISO)))
+    # map("world", add=TRUE)
 }
 
-# Example with tmin
-tmin.df <- as.data.frame(temp.min, xy = TRUE)
-tmin <- mean.df(temp.min, "tmin")
-
-
 Mapplot(tmin, "VNM")
-
-
-# Ne fonctionne pas, a voir plus tard (juste de la visualisation en soi)
-
 
 
 # TESTING -----------------------------------------------------------------
@@ -164,26 +155,6 @@ View(test3)
 dim(test3)
 
 
-# Snatest1# Snap to grid
-tmin.stg <- SnapToGrid(temp.min)
-wind.stg <- SnapToGrid(wind.rsp)
-
-
-
-wtmin <- SnapToGrid(layers) # OK
-View(wtmin)
-dim(wtmin) # 1159967      29
-wind.df <- as.data.frame(wind, xy = T)
-dim(wind.df) # 1208377      14
-wind.stgdf <- as.data.frame(wind.stg, xy = T)
-dim(wind.stgdf) # 571137     17
-dim(tmin.stg) # 1159967      17
-
-
-# Dimensions differents mais surement du au resampling
-# Valeurs en commun.... weird ??? Plotter l'overlap ==> voir comment faire + tard
-
-# Check the coverage of data
 x11()
 par(mfrow= c(1,2))
 plot(wind[[1]], main = "Wind in Thailand")
