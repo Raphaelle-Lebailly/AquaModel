@@ -29,9 +29,10 @@ library(CoordinateCleaner)
 # Climate data
 temp.min <- worldclim_country("Vietnam", var = "tmin", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
 temp.max <- worldclim_country("Vietnam", var = "tmax", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
-wind <- worldclim_country("Thailand", var = "wind", res = 10, path=tempdir())
+wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
 # Species data
 mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' species, GBIF_DATA
+# rtilapia <- occ_data(scientificName = "Oreochromis sp.")
 # Meta and data
 # mola.df <- mola$data # Class "tbl_df"     "tbl"        "data.frame" ; for later
 
@@ -97,7 +98,7 @@ mean.df <- function(layer, arg){
 ### Overlay -----------------------------------------------------------------
 # Function to visualize the raster layer
 Mapplot <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector en fonction
-  if(typeof(layer) != "S4"){
+  if( (typeof(layer) != "S4")| (typeof(layer) != "S3")){
     layer <- as_spatraster(layer, crs = "EPSG:4326")
   }
   # Geographical data
@@ -111,113 +112,39 @@ Mapplot <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector e
   par(mfrow=c(1,1))
   ov <- mask(layer, borders)
   plot(ov, zlim=c(min.var,max.var),
-    main = paste(c(names(tmin), ISO)))
+    main = paste(c(names(layer), ISO)))
     # map("world", add=TRUE)
 }
-
-Mapplot(tmin, "VNM")
 
 
 # TESTING -----------------------------------------------------------------
 
-# Resample
-# Use the resample function of the 'terra' package. Adapts the geometry of one raster to another.
-# Has to be a SpatRaster format.
-# Reshape the geometry of the wind layer (with temp.min as geometry reference)
-wind.rsp <- terra::resample(wind, temp.min, method = "bilinear") 
-# Need to verify if the method is adapted to our case.
-tmax.rsp <- terra::resample(temp.max, temp.min, method = "bilinear") 
+# Min temperature
+temp.min # The SpatRaster layer
+tmin <- as.data.frame(temp.min, xy = TRUE) # The first dataframe
+tmin.mean <- mean.df(tmin, "tmin") # Compute the mean value and re-transform into a SpatRaster object
+Mapplot(tmin.mean, "VNM") # Plot the layer
 
-# Merge dataframes (before the snap to grid)
-tmin.df <- as.data.frame(temp.min,xy=T)
-tmax.df <- as.data.frame(tmax.rsp,xy=T)
-wind.df <- as.data.frame(wind.rsp,xy=T)
+# Wind 
+wind # The spatraster layer
+wind.rs <- resample(wind, temp.min, "bilinear") # Reshape so that it fits the base layer geometry (tmin here)
+df <- as.data.frame(wind.rs, xy = T)
+wind.mean <- mean.df(wind.rs, "wind") # Compute the mean
+Mapplot(wind.mean, "VNM") # Plot the layer (in Thailand here)
 
+
+# Add both layers into the same dataframe
 test1 <- tmin.df %>% 
   left_join(tmax.df)
-View(test1)
-dim(test1)
-dim(tmin.df)
-dim(tmax.df)
-
-# Semble OK
-test2 <- tmin.df %>% 
-  inner_join(tmax.df)
-View(test2)
-dim(test2)
 
 which(is.na(test1)) # Pas de NA, normal car tout colle normalement
 
-## Avec wind ---> different car en thailande
-test3 <- tmin.df %>% 
-  left_join(wind.df)
-View(test3)
-dim(test3)
 
-
+### For the species data
+mola.data <- mola$data
+mola.df <- as.data.frame(mola.data, xy = TRUE)
 x11()
-par(mfrow= c(1,2))
-plot(wind[[1]], main = "Wind in Thailand")
-terra::plot(temp.min[[1]], main = "Min temp in Vietnam")
-
-ext(wind)
-ext(temp.min)
-# NOT SAME EXTENT ==> have the biggest extent to show all data
-windmean <- mean.df(wind.df, "wind")
-x11()
-# ggplot(windmean) %>%
-crs.wind  <- crs(wind)
-
-plot_coordinates_on_map(windmean, col_x, col_y, projection, ...)
-plot(tmin.stg$x, tmin.stg$y)
-plot(wtmin$x, wtmin$y)
-# Final dataset = same as vietnam (base raster) ==> Take not only the first layer as base but also enlarge 
-# For the other countries
-
-# Chose the adapted method for the resampling.
-wd.df <- as.data.frame(wind, xy = T)
-varname <- c("wind","tmin")
-wtmin.mean <- mean.df(wtmin, varname)
-View(wtmin.mean)
-
-
-### Test the function -------------------------------------------------------------------
-# temp.min.grid <- SnapToGrid(temp.min) 
-# View(temp.min.grid)
-# 
-# # Retrieve the data
-# temp.min.grid <- temp.min.grid[[1]]
-# temp.min.res <- temp.min.grid[[2]]
-# temp.min.ext <- temp.min.grid[[3]]
-
-
-
-# 
-temp.min.mean <- mean.df(temp.min.grid, "tmin")
-View(temp.min.mean) # OK
-
-
-
-# EXAMPLE:
-r <- rast(nrows=3, ncols=3, xmin=0, xmax=10, ymin=0, ymax=10)
-values(r) <- 1:ncell(r)
-s <- rast(nrows=25, ncols=30, xmin=1, xmax=11, ymin=-1, ymax=11)
-values(s) <- 1:ncell(s)
-x <- resample(r, s, method="bilinear")
-
-# Adaptation d
-par(mfrow=c(1,3))
-plot(r, main = "raster to convert")
-plot(s, main = "raster structure")
-plot(x, main = "Result")
-
-# On essaye de les faire correspondre. On prend le rater 1 comme base.
-
-
-
-
-
-
+Mapplot(mola, "VNM")
 
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package --> Standardized cleaning
