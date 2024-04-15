@@ -23,6 +23,46 @@ The method will depend on the nature of the variable itself.
 
         layer.rsp
 
+
+**Snap to grid**
+
+Snap to grid is useful to adapt every layer to the same skeleton scaffold. 
+Other method if resample() is not used.
+
+```{r}
+SnapToGrid <- function(layer){
+  df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
+  # Resolution
+  Dim <- dim(layer) 
+  ResX <- Dim[1] # Resolution for x
+  ResY <- Dim[2] # Resolution for y 
+  DimLayer <- list(ResX, ResY)
+  # Extent
+  ext <- ext(layer) # Extent for data (terra object)
+  xmin <- ext$xmin
+  ymin <- ext$ymin
+  xmax <- ext$xmax
+  ymax <- ext$ymax
+  ext.layer <- list(xmin, ymin, xmax, ymax)
+  #Delta
+  deltaX <- (xmax - xmin)/ResX
+  deltaY <- (ymax - ymin)/ResY 
+  # Create grid
+  df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
+  df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
+  len <- dim(df)
+  df$index <- seq(1,len[1])
+  # Return
+  return(df)
+  # list(df, DimLayer, ext.layer)
+}
+```
+
+==> Not sure snap to grid is working fully for the dataset we want 
+
+        layer.stg (or final.df)
+
+
 #### 2. Mean value
 
 The a fine time scale isn't relevant in our case. The values per month are not interesting, so we compute the mean and replace the raw data by a mean value column into the new dataset. 
@@ -57,42 +97,6 @@ No matter if x and y are different, anyways will be better organized thanks to s
 
         layer.mg
 
-#### 4. Snap to grid
-
-Snap to grid is useful to adapt every layer to the same skeleton scaffold. 
-
-```{r}
-SnapToGrid <- function(layer){
-  df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
-  # Resolution
-  Dim <- dim(layer) 
-  ResX <- Dim[1] # Resolution for x
-  ResY <- Dim[2] # Resolution for y 
-  DimLayer <- list(ResX, ResY)
-  # Extent
-  ext <- ext(layer) # Extent for data (terra object)
-  xmin <- ext$xmin
-  ymin <- ext$ymin
-  xmax <- ext$xmax
-  ymax <- ext$ymax
-  ext.layer <- list(xmin, ymin, xmax, ymax)
-  #Delta
-  deltaX <- (xmax - xmin)/ResX
-  deltaY <- (ymax - ymin)/ResY 
-  # Create grid
-  df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
-  df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
-  len <- dim(df)
-  df$index <- seq(1,len[1])
-  # Return
-  return(df)
-  # list(df, DimLayer, ext.layer)
-}
-```
-
-==> Not sure snap to grid is working fully for the dataset we want 
-
-        layer.stg (or final.df)
 
 #### 5. Plot the layers
 
