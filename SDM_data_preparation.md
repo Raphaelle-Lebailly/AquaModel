@@ -49,7 +49,8 @@ mean.df <- function(layer, arg){
 When the geometry is right for every layer and the mean value is calculated, we want to merge the datasets in order to have all variables in the same space.
 
 ```{r}
-
+new.df <- df1 %>%
+  inner_joint(df2)
 ```
 *use the dplyr package*. The common columns are x and y.
 No matter if x and y are different, anyways will be better organized thanks to snap to grid function.
