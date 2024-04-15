@@ -15,6 +15,7 @@ library(cowplot)
 # Spatial data
 #library(raster) # Obsolete
 library(terra)
+library(tidyterra)
 library(geodata) # Import environmental data
 library(sf) 
 library(leaflet) # Web mapping
@@ -73,40 +74,13 @@ SnapToGrid <- function(layer){
   # list(df, DimLayer, ext.layer)
 }
 
-# Testing for new datasets
-# Avec le dataframe en entrée qui correspond au merge des couches 
-STG <- function(df, baselayer){
-  df.base <- as.data.frame(baselayer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
-  # Resolution base layer
-  Dim <- dim(baselayer) 
-  ResX <- Dim[1] # Resolution for x
-  ResY <- Dim[2] # Resolution for y 
-  DimLayer <- list(ResX, ResY)
-  # Extent base layer => sert a ponderer mais pas a restreindre l'espace
-  ext <- ext(baselayer) # Extent for data (terra object)
-  xmin <- ext$xmin
-  ymin <- ext$ymin
-  xmax <- ext$xmax
-  ymax <- ext$ymax
-  ext.layer <- list(xmin, ymin, xmax, ymax)
-  #Delta
-  deltaX <- (xmax - xmin)/ResX
-  deltaY <- (ymax - ymin)/ResY 
-  # Create grid
-  df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
-  df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
-  len <- dim(df)
-  df$index <- seq(1,len[1])
-  # Return
-  return(df)
-  # list(df, DimLayer, ext.layer)
-}
 
 ### Subset Mean value ---------------------------------------------------------------------------
 mean.df <- function(layer, arg){
+  df <- as.data.frame(layer, xy =T)
   name.col <- paste0("mean_", arg)
   # Calculate mean value per row 
-  sub.df.mean1 <-  layer %>%
+  sub.df.mean1 <-  df %>%
     mutate(name.col =  rowMeans(dplyr::select(., contains(arg)), na.rm = FALSE)) 
   # Subset without raw data
   sub.df.mean2 <- sub.df.mean1 %>%
@@ -120,7 +94,10 @@ mean.df <- function(layer, arg){
 
 ### Overlay -----------------------------------------------------------------
 # Function to visualize the raster layer
-Mapplot <- function(layer, ISO){ # "borders" = ISOCODE => importer le spatvector en fonction
+Mapplot <- function(layer, var, ISO){ # borders = ISOCODE => importer le spatvector en fonction
+  if(typeof(layer) != "S4"){
+    layer <- as_spatraster(layer, crs = "EPSG:4326")
+  }
   # Geographical data
   borders <- gadm(country = ISO, level = 0, path=tempdir()) # Borders, SPATVECTOR
   # Variable range
@@ -131,19 +108,20 @@ Mapplot <- function(layer, ISO){ # "borders" = ISOCODE => importer le spatvector
   # x11()
   # par(mfrow=c(1,1))
   col <- layer %>%
-    dplyr::select(., contains("mean"))
+    dplyr::select(., contains(var))
   ov <- mask(col, borders)
   plot(ov, zlim=c(min.var,max.var),
     main = paste(c("Average value","in" )))
     map("world", add=TRUE)
 }
 
-Mapplot(temp.min.mean, borders.vnm)
+# Example with tmin
+tmin.df <- as.data.frame(temp.min, xy = TRUE)
+tmin <- mean.df(temp.min, "tmin")
 
-col <-  temp.min.mean %>%
-  dplyr::select(., contains("mean"))
-colname <-colnames(col)
-head(col)
+
+Mapplot(tmin, "VNM")
+
 
 # Ne fonctionne pas, a voir plus tard (juste de la visualisation en soi)
 
