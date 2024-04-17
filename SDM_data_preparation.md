@@ -105,6 +105,13 @@ To check if it works, we need to have a visual representation of the final dataf
 
 ### 2. Species data
 
+#### 2.1 Clean the data
+Cleaning the data allows to have a dataset without irrelevant values. 
+For that, we use the package 'CoordinateCleaner'. 
+
+
+
+
 **Species data**
 - Grid variables (linking environmental data and species data with the same projection):
     - Removing records without all the data of each variables
