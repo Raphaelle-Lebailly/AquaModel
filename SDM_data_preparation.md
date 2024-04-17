@@ -5,10 +5,11 @@
 - Verify data collinearity: threshold pairwise correlation coefficient value of |r| > .7
 - Standardization of the data to a mean of 0 and SD of 1
 
-### Data
+### 1. Environmental data
 - Chosing the right resolution
 
-#### 1. Resample
+
+#### 1.1 Resample
 
 The different layers need to have the same geometry to be projected in the same grid. Therefore, the 'resample' function, of the package 'terra' is used in order to adapt one SpatRaster's geometry to another's. 
 
@@ -58,12 +59,10 @@ SnapToGrid <- function(layer){
 }
 ```
 
-==> Not sure snap to grid is working fully for the dataset we want 
-
         layer.stg (or final.df)
 
 
-#### 2. Mean value
+#### 1.2 Mean value
 
 The a fine time scale isn't relevant in our case. The values per month are not interesting, so we compute the mean and replace the raw data by a mean value column into the new dataset. 
 
@@ -84,7 +83,7 @@ mean.df <- function(layer, arg){
 ```
         layer.mn
 
-#### 3. Merge dataframes
+#### 1.3 Merge dataframes
 
 When the geometry is right for every layer and the mean value is calculated, we want to merge the datasets in order to have all variables in the same space.
 
@@ -98,12 +97,13 @@ No matter if x and y are different, anyways will be better organized thanks to s
         layer.mg
 
 
-#### 5. Plot the layers
+#### 1.4 Plot the layers
 
 To check if it works, we need to have a visual representation of the final dataframe. 
 
+**Remark: downloading the data per country for the borders takes a lot of time, maybe try for all of them at once?**
 
-
+### 2. Species data
 
 **Species data**
 - Grid variables (linking environmental data and species data with the same projection):
