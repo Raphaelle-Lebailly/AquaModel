@@ -12,6 +12,7 @@ library(rgbif)
 library(ggplot2) 
 library(RColorBrewer) 
 library(cowplot)
+library(magick)
 # Spatial data
 #library(raster) # Obsolete
 library(terra)
@@ -137,18 +138,77 @@ Mapplot(wind.mean, "VNM") # Plot the layer (in Thailand here)
 test1 <- tmin.df %>% 
   left_join(tmax.df)
 
-which(is.na(test1)) # Pas de NA, normal car tout colle normalement
+# which(is.na(test1)) # Pas de NA, normal car tout colle normalement
 
 
+
+
+# Prepare species data ----------------------------------------------------
 ### For the species data
 mola.data <- mola$data
 mola.df <- as.data.frame(mola.data, xy = TRUE)
+plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Just an idea
+
+# Visualization of the data with rgbif
 x11()
-Mapplot(mola, "VNM")
+map_fetch()
+typeof(mola.df)
+
+# Interactive map
+prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
+style = 'style=purpleYellow.point'
+tile = paste0(prefix,style)
+leaflet() %>%
+  setView(lng = 20, lat = 20, zoom = 01) %>%
+  addTiles() %>%  
+  addTiles(urlTemplate=tile)
+
+
+# create style raster layer
+projection = '3857' # projection code
+style = 'style=osm-bright' # map style
+tileRaster = paste0('https://tile.gbif.org/',projection,'/omt/{z}/{x}/{y}@1x.png?',style)
+# create our polygons layer
+prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
+polygons = 'style=fire.point' # ploygon styles
+speciesKey = 'speciesKey=2361130' # speciesKey of mola 
+country = 'country=VD'
+tilePolygons = paste0(prefix,polygons,'&',speciesKey)
+# plot the styled map
+leaflet() %>%
+  setView(lng = 5.4265362, lat = 43.4200248, zoom = 01) %>%
+  addTiles(urlTemplate=tileRaster) %>%
+  addTiles(urlTemplate=tilePolygons)
+
+
+# Add multiple layers in a map
+# See for later use!!!
+
+
+
+
+
 
 # Data cleaning -----------------------------------------------------------
-# With CoordinateCleaning package --> Standardized cleaning
+# With CoordinateCleaning package (Standardized cleaning)
 
-clean_coordinates(mola.df)
-is.spatialvalid(mola$data) # Check for valid coordinates
-is.spatialvalid(vnm.temp.autumn.df) 
+# Filter relevant data
+mola.df <- mola.df %>%
+  dplyr::select(species, decimalLongitude, 
+                decimalLatitude, countryCode, individualCount,
+                gbifID, family, taxonRank, coordinateUncertaintyInMeters,
+                year, basisOfRecord, institutionCode, datasetName)
+
+# remove records without coordinates
+mola.df <- mola.df %>%
+  tidyterra::filter(!is.na(decimalLongitude)) %>%
+  tidyterra::filter(!is.na(decimalLatitude))
+
+mola.flags <- clean_coordinates(x = mola.df, 
+                                lon = "decimalLongitude", 
+                                lat = "decimalLatitude",
+                                countries = "countryCode",
+                                species = "species",
+                                tests = c("capitals", "centroids",
+                                          "equal", "zeros", "countries"))
+summary(mola.flags)
