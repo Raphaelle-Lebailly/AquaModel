@@ -154,31 +154,31 @@ x11()
 map_fetch()
 typeof(mola.df)
 
-# Interactive map
-prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
-style = 'style=purpleYellow.point'
-tile = paste0(prefix,style)
-leaflet() %>%
-  setView(lng = 20, lat = 20, zoom = 01) %>%
-  addTiles() %>%  
-  addTiles(urlTemplate=tile)
-
-
-# create style raster layer
-projection = '3857' # projection code
-style = 'style=osm-bright' # map style
-tileRaster = paste0('https://tile.gbif.org/',projection,'/omt/{z}/{x}/{y}@1x.png?',style)
-# create our polygons layer
-prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
-polygons = 'style=fire.point' # ploygon styles
-speciesKey = 'speciesKey=2361130' # speciesKey of mola 
-country = 'country=VD'
-tilePolygons = paste0(prefix,polygons,'&',speciesKey)
-# plot the styled map
-leaflet() %>%
-  setView(lng = 5.4265362, lat = 43.4200248, zoom = 01) %>%
-  addTiles(urlTemplate=tileRaster) %>%
-  addTiles(urlTemplate=tilePolygons)
+# # Interactive map
+# prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
+# style = 'style=purpleYellow.point'
+# tile = paste0(prefix,style)
+# leaflet() %>%
+#   setView(lng = 20, lat = 20, zoom = 01) %>%
+#   addTiles() %>%  
+#   addTiles(urlTemplate=tile)
+# 
+# 
+# # create style raster layer
+# projection = '3857' # projection code
+# style = 'style=osm-bright' # map style
+# tileRaster = paste0('https://tile.gbif.org/',projection,'/omt/{z}/{x}/{y}@1x.png?',style)
+# # create our polygons layer
+# prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
+# polygons = 'style=fire.point' # ploygon styles
+# speciesKey = 'speciesKey=2361130' # speciesKey of mola 
+# country = 'country=VD'
+# tilePolygons = paste0(prefix,polygons,'&',speciesKey)
+# # plot the styled map
+# leaflet() %>%
+#   setView(lng = 5.4265362, lat = 43.4200248, zoom = 01) %>%
+#   addTiles(urlTemplate=tileRaster) %>%
+#   addTiles(urlTemplate=tilePolygons)
 
 
 # Add multiple layers in a map
@@ -192,17 +192,6 @@ leaflet() %>%
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package (Standardized cleaning)
 
-# Filter relevant data
-mola.df <- mola.df %>%
-  dplyr::select(species, decimalLongitude, 
-                decimalLatitude, countryCode, individualCount,
-                gbifID, family, taxonRank, coordinateUncertaintyInMeters,
-                year, basisOfRecord, institutionCode, datasetName)
-
-# remove records without coordinates
-mola.df <- mola.df %>%
-  tidyterra::filter(!is.na(decimalLongitude)) %>%
-  tidyterra::filter(!is.na(decimalLatitude))
 
 mola.flags <- clean_coordinates(x = mola.df, 
                                 lon = "decimalLongitude", 
@@ -212,3 +201,39 @@ mola.flags <- clean_coordinates(x = mola.df,
                                 tests = c("capitals", "centroids",
                                           "equal", "zeros", "countries"))
 summary(mola.flags)
+# Problem with the country flags.... 100% wrong according to cc but not true...!
+# Omit this for the moment
+
+# New raster
+Sprast <- function(sp, species){
+  # Data
+  sp.data <- sp$data
+  sp.df <- as.data.frame(sp.data, xy = TRUE)
+  # Filter relevant data
+  sp.df <- sp.df %>%
+    dplyr::select(species, decimalLongitude, 
+                  decimalLatitude, countryCode, individualCount,
+                  gbifID, family, taxonRank, coordinateUncertaintyInMeters,
+                  year, basisOfRecord, institutionCode, datasetName)
+  
+  # remove records without coordinates
+  sp.df <- sp.df %>%
+    tidyterra::filter(!is.na(decimalLongitude)) %>%
+    tidyterra::filter(!is.na(decimalLatitude))
+  # Cleaned df
+  name <- paste0(species)
+  df <- data.frame(x = sp.df$decimalLatitude, y = sp.df$decimalLongitude, name = 1)
+  names(df)[names(df) == 'name'] <- toString(name)
+  # New raster
+  # r <- as_spatraster(df)
+  return(df)
+}
+
+mola.df2 <- Sprast(mola, "mola")
+mola.df3 <- as.data.frame(mola.df2, xy = TRUE)
+# r <- as_spatraster(mola.df3, crs = "EPSG:4326") # Irregular grid so won't work
+e <- ext(apply(s100[,1:2], 2, range))
+rasterize(mola.df3, temp.min)
+# Adapt the raster to the geometry of the base raster
+
+plot(mola.df3$x, mola.df3$y)
