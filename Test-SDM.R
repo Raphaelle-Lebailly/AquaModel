@@ -33,6 +33,8 @@ temp.max <- worldclim_country("Vietnam", var = "tmax", res = 2.5, path=tempdir()
 wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
 # Species data
 mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' species, GBIF_DATA
+Hg <- occ_data(scientificName = "Hemibagrus guttatus") # Vietnamese species
+
 # rtilapia <- occ_data(scientificName = "Oreochromis sp.")
 # Meta and data
 # mola.df <- mola$data # Class "tbl_df"     "tbl"        "data.frame" ; for later
@@ -49,36 +51,9 @@ mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' sp
 
 # Snap to grid function (manually)
 # Define a base raster that defines the scaffold for the grid
-SnapToGrid <- function(layer){
-  df <- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
-  # Resolution
-  Dim <- dim(layer) 
-  ResX <- Dim[1] # Resolution for x
-  ResY <- Dim[2] # Resolution for y 
-  DimLayer <- list(ResX, ResY)
-  # Extent
-  ext <- ext(layer) # Extent for data (terra object)
-  xmin <- ext$xmin
-  ymin <- ext$ymin
-  xmax <- ext$xmax
-  ymax <- ext$ymax
-  ext.layer <- list(xmin, ymin, xmax, ymax)
-  #Delta
-  deltaX <- (xmax - xmin)/ResX
-  deltaY <- (ymax - ymin)/ResY 
-  # Create grid
-  df$snapX <- as.integer(((df$x-xmin)/deltaX) + 0.5)
-  df$snapY <- as.integer(((df$y-ymin)/deltaY) + 0.5)
-  len <- dim(df)
-  df$index <- seq(1,len[1])
-  # Return
-  return(df)
-  # list(df, DimLayer, ext.layer)
-}
-
 
 ### Subset Mean value ---------------------------------------------------------------------------
-mean.df <- function(layer, arg){
+mean.df <- function(layer, arg, type){
   df <- as.data.frame(layer, xy =T)
   name.col <- paste0("mean_", arg)
   # Calculate mean value per row 
@@ -89,12 +64,15 @@ mean.df <- function(layer, arg){
     dplyr::select(., -contains(arg))
   # Rename column
   names(sub.df2)[names(sub.df2) == 'name.col'] <- toString(name.col)
-  # Retransform as spatraster
-  layer2 <- as_spatraster(sub.df2, crs = "EPSG:4326")
   # Final df
-  return(layer2)
+  if(type == "df"){
+    return(sub.df2)
+  } else if(type == "raster"){
+    # Retransform as spatraster
+    layer2 <- as_spatraster(sub.df2, crs = "EPSG:4326")
+    return(layer2)
+  }
 }
-
 
 ### Overlay -----------------------------------------------------------------
 # Function to visualize the raster layer
@@ -117,30 +95,59 @@ Mapplot <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector e
     # map("world", add=TRUE)
 }
 
+### Clean species data ------------------------------------------------------
+Sprast <- function(sp, raw){
+  # Data
+  sp.data <- sp$data
+  sp.df <- as.data.frame(sp.data, xy = TRUE)
+  # Filter relevant data
+  sp.df <- sp.df %>%
+    dplyr::select(species, decimalLongitude, 
+                  decimalLatitude, countryCode, individualCount,
+                  gbifID, family, taxonRank, coordinateUncertaintyInMeters,
+                  year, basisOfRecord, institutionCode, datasetName)
+  
+  # remove records without coordinates
+  sp.df <- sp.df %>%
+    tidyterra::filter(!is.na(decimalLongitude)) %>%
+    tidyterra::filter(!is.na(decimalLatitude))
+  # Cleaned df
+  name <- sp.df$species[1]
+  df <- data.frame(x = sp.df$decimalLongitude, y = sp.df$decimalLatitude, species = toString(name))
+  # New raster
+  # r <- as_spatraster(df)
+  if(raw == "yes"){
+    return(sp.df)
+  } else if (raw == "no"){
+    return(df)
+  } else {
+    print("Write valid argument 'yes' or 'no' for raw data")
+  }
+}
+
 
 # TESTING -----------------------------------------------------------------
 
 # Min temperature
 temp.min # The SpatRaster layer
 tmin <- as.data.frame(temp.min, xy = TRUE) # The first dataframe
-tmin.mean <- mean.df(tmin, "tmin") # Compute the mean value and re-transform into a SpatRaster object
+tmin.mean <- mean.df(tmin, "tmin", "df") # Compute the mean value and re-transform into a SpatRaster object
+tmin.mn <- mean.df(tmin, "tmin", "raster")
 Mapplot(tmin.mean, "VNM") # Plot the layer
 
 # Wind 
 wind # The spatraster layer
 wind.rs <- resample(wind, temp.min, "bilinear") # Reshape so that it fits the base layer geometry (tmin here)
 df <- as.data.frame(wind.rs, xy = T)
-wind.mean <- mean.df(wind.rs, "wind") # Compute the mean
-Mapplot(wind.mean, "VNM") # Plot the layer (in Thailand here)
+wind.mn <- mean.df(wind.rs, "wind", "df") # Compute the mean
+Mapplot(wind.mn, "VNM") # Plot the layer (in Thailand here)
 
 
 # Add both layers into the same dataframe
-test1 <- tmin.df %>% 
-  left_join(tmax.df)
-
-# which(is.na(test1)) # Pas de NA, normal car tout colle normalement
-
-
+test1 <- tmin.mean %>% 
+  left_join(wind.mn)
+layer <- as_spatraster(test1, crs = "EPSG:4326")
+Mapplot(layer = layer, ISO = "VNM") # OK
 
 
 # Prepare species data ----------------------------------------------------
@@ -150,9 +157,9 @@ mola.df <- as.data.frame(mola.data, xy = TRUE)
 plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Just an idea
 
 # Visualization of the data with rgbif
-x11()
-map_fetch()
-typeof(mola.df)
+# x11()
+# map_fetch()
+# typeof(mola.df)
 
 # # Interactive map
 # prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
@@ -185,15 +192,11 @@ typeof(mola.df)
 # See for later use!!!
 
 
-
-
-
-
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package (Standardized cleaning)
-
-
-mola.flags <- clean_coordinates(x = mola.df, 
+mola.df2 <- Sprast(mola, "no") # Only coordinates + presence
+mola.df3 <- Sprast(mola, "yes") # Cleaned df
+mola.flags <- clean_coordinates(x = mola.df3, 
                                 lon = "decimalLongitude", 
                                 lat = "decimalLatitude",
                                 countries = "countryCode",
@@ -204,36 +207,50 @@ summary(mola.flags)
 # Problem with the country flags.... 100% wrong according to cc but not true...!
 # Omit this for the moment
 
-# New raster
-Sprast <- function(sp, species){
-  # Data
-  sp.data <- sp$data
-  sp.df <- as.data.frame(sp.data, xy = TRUE)
-  # Filter relevant data
-  sp.df <- sp.df %>%
-    dplyr::select(species, decimalLongitude, 
-                  decimalLatitude, countryCode, individualCount,
-                  gbifID, family, taxonRank, coordinateUncertaintyInMeters,
-                  year, basisOfRecord, institutionCode, datasetName)
-  
-  # remove records without coordinates
-  sp.df <- sp.df %>%
-    tidyterra::filter(!is.na(decimalLongitude)) %>%
-    tidyterra::filter(!is.na(decimalLatitude))
-  # Cleaned df
-  name <- paste0(species)
-  df <- data.frame(x = sp.df$decimalLatitude, y = sp.df$decimalLongitude, name = 1)
-  names(df)[names(df) == 'name'] <- toString(name)
-  # New raster
-  # r <- as_spatraster(df)
-  return(df)
+
+# Add coordinates to common df
+Hg.data <- Hg$data
+Hg.df <- as.data.frame(Hg.data, xy = TRUE)
+Hg.df2 <- Sprast(Hg, "no")
+sp <- mola.df2 %>%
+  full_join(Hg.df2)
+
+
+# Adapt the raster to the geometry of the base raster
+test1.r <- as_spatraster(test1, crs = "EPSG:4326")
+Mapplot(test1, "VNM")
+plot(test1.r) # Normal que ca ne dessine pas le vietnam car pas fonction overlay, just to check
+
+rastersp <- function(df, layerbase){
+  coord <- matrix(c(df$x,df$y), ncol = 2)
+  r <- rasterize(coord, layerbase)
+  return(r)
 }
 
-mola.df2 <- Sprast(mola, "mola")
-mola.df3 <- as.data.frame(mola.df2, xy = TRUE)
-# r <- as_spatraster(mola.df3, crs = "EPSG:4326") # Irregular grid so won't work
-e <- ext(apply(s100[,1:2], 2, range))
-rasterize(mola.df3, temp.min)
-# Adapt the raster to the geometry of the base raster
+coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
+coord
+# sprast <- rasterize(x = coord, y = temp.min, value = sp$species) # Rasterize coord sp with base layer
+d <- as.data.frame(sprast, xy=TRUE)
+x11()
+plot(sp$x, sp$y)
 
-plot(mola.df3$x, mola.df3$y)
+s <- cellFromXY(temp.min, xy = coord)
+s
+replace(s, 1:length(s), 1)
+
+sp$species
+
+# Create df 3
+df3 <- 
+# Add species name in final dataframe (env var)
+test1$species <- 0
+test1$species[df3$index,]==df3$species
+
+
+
+
+# Rasteriser avant le df espece, l'adapter au raster base et ensuite extraire dataset et 
+summary(test2)
+
+
+
