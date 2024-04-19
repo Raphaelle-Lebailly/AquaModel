@@ -89,7 +89,7 @@ When the geometry is right for every layer and the mean value is calculated, we 
 
 ```{r}
 new.df <- df1 %>%
-  inner_joint(df2)
+  left_joint(df2)
 ```
 *use the dplyr package*. The common columns are x and y.
 No matter if x and y are different, anyways will be better organized thanks to snap to grid function.
@@ -110,7 +110,23 @@ Cleaning the data allows to have a dataset without irrelevant values.
 For that, we use the package 'CoordinateCleaner'. 
 
 
+### 3. Merge data
+When the environmental and species dataframes are ready, we can merge them. 
 
+```{r}
+Final.df <- function(final, sp){
+  coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
+  s <- cellFromXY(temp.min, xy = coord)
+  final$species <- NA
+  for (i in 1:length(s)) {
+    if (!is.na(s[i])) {
+      final$species[s[i]] <- sp$species[i]
+    }
+  }
+  return(final)
+}
+```
+    finaldf
 
 **Species data**
 - Grid variables (linking environmental data and species data with the same projection):
@@ -135,3 +151,6 @@ Here, two modelling approaches, but depends on the context. --> Cf. paper
 
 # References
 Nguyen & Leung, 2022
+
+
+--> Clean everything and make it more generalizable
