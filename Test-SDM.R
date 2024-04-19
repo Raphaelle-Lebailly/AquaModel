@@ -1,4 +1,4 @@
-# setwd("C:/Users/User/Desktop/Internship/Data")
+# SDM FOR AQUACULTURE CANDIDATE SPECIES
 
 # PACKAGES ----------------------------------------------------------------
 # Data Management
@@ -35,23 +35,7 @@ wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
 mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' species, GBIF_DATA
 Hg <- occ_data(scientificName = "Hemibagrus guttatus") # Vietnamese species
 
-# rtilapia <- occ_data(scientificName = "Oreochromis sp.")
-# Meta and data
-# mola.df <- mola$data # Class "tbl_df"     "tbl"        "data.frame" ; for later
-
-
 # FUNCTIONS ---------------------------------------------------------------
-
-### Snap to grid ------------------------------------------------------------
-# The goal is to build the grid scaffold from the environmental data layers to have a base
-# and chose the adequate resolution. After that, the species data can be projected within the
-# different grid cells (presence/absence) and filter the data rightfully.
-
-# [(x-xmin)/delta(x) +0.5]
-
-# Snap to grid function (manually)
-# Define a base raster that defines the scaffold for the grid
-
 ### Subset Mean value ---------------------------------------------------------------------------
 mean.df <- function(layer, arg, type){
   df <- as.data.frame(layer, xy =T)
@@ -126,6 +110,21 @@ Sprast <- function(sp, raw){
 }
 
 
+### Add species name in final dataframe ----------------------------------
+Final.df <- function(final, sp){
+  coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
+  s <- cellFromXY(temp.min, xy = coord)
+  final$species <- NA
+  for (i in 1:length(s)) {
+    if (!is.na(s[i])) {
+      final$species[s[i]] <- sp$species[i]
+    }
+  }
+  return(final)
+}
+
+
+
 # TESTING -----------------------------------------------------------------
 
 # Min temperature
@@ -156,41 +155,6 @@ mola.data <- mola$data
 mola.df <- as.data.frame(mola.data, xy = TRUE)
 plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Just an idea
 
-# Visualization of the data with rgbif
-# x11()
-# map_fetch()
-# typeof(mola.df)
-
-# # Interactive map
-# prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
-# style = 'style=purpleYellow.point'
-# tile = paste0(prefix,style)
-# leaflet() %>%
-#   setView(lng = 20, lat = 20, zoom = 01) %>%
-#   addTiles() %>%  
-#   addTiles(urlTemplate=tile)
-# 
-# 
-# # create style raster layer
-# projection = '3857' # projection code
-# style = 'style=osm-bright' # map style
-# tileRaster = paste0('https://tile.gbif.org/',projection,'/omt/{z}/{x}/{y}@1x.png?',style)
-# # create our polygons layer
-# prefix = 'https://api.gbif.org/v2/map/occurrence/density/{z}/{x}/{y}@1x.png?'
-# polygons = 'style=fire.point' # ploygon styles
-# speciesKey = 'speciesKey=2361130' # speciesKey of mola 
-# country = 'country=VD'
-# tilePolygons = paste0(prefix,polygons,'&',speciesKey)
-# # plot the styled map
-# leaflet() %>%
-#   setView(lng = 5.4265362, lat = 43.4200248, zoom = 01) %>%
-#   addTiles(urlTemplate=tileRaster) %>%
-#   addTiles(urlTemplate=tilePolygons)
-
-
-# Add multiple layers in a map
-# See for later use!!!
-
 
 # Data cleaning -----------------------------------------------------------
 # With CoordinateCleaning package (Standardized cleaning)
@@ -216,41 +180,21 @@ sp <- mola.df2 %>%
   full_join(Hg.df2)
 
 
-# Adapt the raster to the geometry of the base raster
-test1.r <- as_spatraster(test1, crs = "EPSG:4326")
-Mapplot(test1, "VNM")
-plot(test1.r) # Normal que ca ne dessine pas le vietnam car pas fonction overlay, just to check
+# Assemble final data frame with environmental values + species
+finaldf <- Final.df(test1, sp)
+# Convert to raster
+finalr <- as_spatraster(finaldf, crs = "EPSG:4326")
+finalr
+Mapplot(finalr, "VNM")
 
-rastersp <- function(df, layerbase){
-  coord <- matrix(c(df$x,df$y), ncol = 2)
-  r <- rasterize(coord, layerbase)
-  return(r)
-}
 
-coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
-coord
-# sprast <- rasterize(x = coord, y = temp.min, value = sp$species) # Rasterize coord sp with base layer
-d <- as.data.frame(sprast, xy=TRUE)
-x11()
-plot(sp$x, sp$y)
-
-s <- cellFromXY(temp.min, xy = coord)
-s
-replace(s, 1:length(s), 1)
-
-sp$species
-
-# Create df 3
-df3 <- 
-# Add species name in final dataframe (env var)
-test1$species <- 0
-test1$species[df3$index,]==df3$species
+### Visualization of the data with rgbif ---------------------------------
 
 
 
 
-# Rasteriser avant le df espece, l'adapter au raster base et ensuite extraire dataset et 
-summary(test2)
+
+
 
 
 
