@@ -117,16 +117,17 @@ When the environmental and species dataframes are ready, we can merge them.
 Final.df <- function(final, sp){
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
   s <- cellFromXY(temp.min, xy = coord)
+  p <- which(!is.na(s))
+  s1 <- s[p]
   final$species <- NA
-  for (i in 1:length(s)) {
-    if (!is.na(s[i])) {
-      final$species[s[i]] <- sp$species[i]
-    }
-  }
+  final$species[s1] <- sp$species[p]
   return(final)
 }
 ```
     finaldf
+
+And we can plot by converting it into a Spatraster. 
+
 
 **Species data**
 - Grid variables (linking environmental data and species data with the same projection):
