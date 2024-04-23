@@ -5,6 +5,7 @@
 library(tidyverse)
 library(conflicted) 
 library(letsR)
+library(DescTools)
 # Plot Maps
 library(plotly)
 library(maps)
@@ -114,15 +115,12 @@ Sprast <- function(sp, raw){
 Final.df <- function(final, sp){
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
   s <- cellFromXY(temp.min, xy = coord)
+  p <- which(!is.na(s))
+  s1 <- s[p]
   final$species <- NA
-  for (i in 1:length(s)) {
-    if (!is.na(s[i])) {
-      final$species[s[i]] <- sp$species[i]
-    }
-  }
+  final$species[s1] <- sp$species[p]
   return(final)
 }
-
 
 
 # TESTING -----------------------------------------------------------------
@@ -143,8 +141,11 @@ Mapplot(wind.mn, "VNM") # Plot the layer (in Thailand here)
 
 
 # Add both layers into the same dataframe
-test1 <- tmin.mean %>% 
-  left_join(wind.mn)
+# test1 <- tmin.mean %>% 
+#   left_join(wind.mn)
+test2 <- cbind(tmin.mean, mean_wind = wind.mn$mean_wind)
+
+
 layer <- as_spatraster(test1, crs = "EPSG:4326")
 Mapplot(layer = layer, ISO = "VNM") # OK
 
@@ -176,25 +177,48 @@ summary(mola.flags)
 Hg.data <- Hg$data
 Hg.df <- as.data.frame(Hg.data, xy = TRUE)
 Hg.df2 <- Sprast(Hg, "no")
-sp <- mola.df2 %>%
-  full_join(Hg.df2)
+Hg.df3 <- Sprast(Hg, "yes")
+# Data cleaning for Hg species
+Hg.flags <- clean_coordinates(x = Hg.df3, 
+                                lon = "decimalLongitude", 
+                                lat = "decimalLatitude",
+                                countries = "countryCode",
+                                species = "species",
+                                tests = c("countries"))
+summary(Hg.flags)
+
+# sp <- mola.df2 %>%
+#   full_join(Hg.df2)
+sp2 <- rbind(mola.df2, Hg.df2)
+
+
 
 
 # Assemble final data frame with environmental values + species
 finaldf <- Final.df(test1, sp)
+finaldf2 <- Final.df(test2, sp2)
 # Convert to raster
 finalr <- as_spatraster(finaldf, crs = "EPSG:4326")
 finalr
 Mapplot(finalr, "VNM")
 
 
+
+##### Testing the coordinate cleaner function 'flag'
+data("d.countries") # Data with codes a2 and a3 to convert for flags
+head(d.countries)
+head(Hg.df3)
+
+Hg.df3$countryCode
+countcode <- d.countries %>%
+  select(a2, a3)
+Hg.df4 <- Hg.df3%>%
+  mutate()
+
+##### Checking the coordinates and row numbers
+# c = matrix(c(finaldf2$x[ps], finaldf2$y[ps]), ncol = 2)
+# cellFromXY(temp.min, c)
+
 ### Visualization of the data with rgbif ---------------------------------
 
-
-
-
-
-
-
-
-
+# write.csv(Hg.df, "species.csv")
