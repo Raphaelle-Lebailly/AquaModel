@@ -215,10 +215,14 @@ countcode <- d.countries %>%
 Hg.df4 <- Hg.df3%>%
   mutate()
 
+
+
+
+
 ##### Checking the coordinates and row numbers
 # c = matrix(c(finaldf2$x[ps], finaldf2$y[ps]), ncol = 2)
 # cellFromXY(temp.min, c)
 
 ### Visualization of the data with rgbif ---------------------------------
 
-# write.csv(Hg.df, "species.csv")
+write.csv(Hg.df, "species.csv")
