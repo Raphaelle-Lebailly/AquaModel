@@ -28,7 +28,6 @@ library(CoordinateCleaner)
 # Alpha countries data
 data("d.countries") # Data with codes a2 and a3 to convert for flags
 head(d.countries)
-head(Hg.df3)
 countcode <- d.countries %>%
   select(a2, a3)
 
@@ -159,11 +158,13 @@ mola <- GetSpData("Amblypharyngodon mola")
 Hg <- GetSpData("Hemibagrus guttatus")
 
 
-### Set base layer ----------------------------------------------------------
+### Set base  ----------------------------------------------------------
+## Layer
 BASE <- tmin
+## Country
+COUNTRY <- c(name = "Vietnam", ISO = "VNM")
 
 ### Data  cleaning ---------------------------------------------------------------
-
 ## Resample
 wind.rs <- resample(wind, BASE, "bilinear") # Adapt one raster's geometry to the base layer
 
