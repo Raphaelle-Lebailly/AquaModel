@@ -25,18 +25,26 @@ library(CoordinateCleaner)
 
 
 # DATA IMPORTATION --------------------------------------------------------
-
-# Geographical data
-# borders.vnm <- gadm(country = "VNM", level = 0, path=tempdir()) # Borders, SPATVECTOR
-# Climate data
-temp.min <- worldclim_country("Vietnam", var = "tmin", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
-temp.max <- worldclim_country("Vietnam", var = "tmax", res = 2.5, path=tempdir()) # Min temperature, SPATRASTER
-wind <- worldclim_country("Vietnam", var = "wind", res = 10, path=tempdir())
-# Species data
-mola <- occ_data(scientificName = "Amblypharyngodon mola") # Test with 'mola' species, GBIF_DATA
-Hg <- occ_data(scientificName = "Hemibagrus guttatus") # Vietnamese species
+# Alpha countries data
+data("d.countries") # Data with codes a2 and a3 to convert for flags
+head(d.countries)
+head(Hg.df3)
+countcode <- d.countries %>%
+  select(a2, a3)
 
 # FUNCTIONS ---------------------------------------------------------------
+### Get Data ---------------------------------------------------------------
+# Environmental data
+GetEnvData <- function(variable, country, resolution){
+  data <- worldclim_country(country, var = variable, res = resolution, path=tempdir())
+  return(data)
+}
+# Species data
+GetSpData <- function(species){
+  data <- occ_data(scientificName = species)
+  return(data)
+}
+
 ### Subset Mean value ---------------------------------------------------------------------------
 mean.df <- function(layer, arg, type){
   df <- as.data.frame(layer, xy =T)
@@ -111,6 +119,20 @@ Sprast <- function(sp, raw){
 }
 
 
+### Species data flagging
+Getflag <- function(data){
+  ##### Replace alpha-2 with alpha-3
+  indices <- match(data$countryCode, countcode$a2)
+  data$countryCode <- countcode$a3[indices]
+  flags <- clean_coordinates(x = data, 
+                                lon = "decimalLongitude", 
+                                lat = "decimalLatitude",
+                                countries = "countryCode",
+                                species = "species",
+                                tests = c("countries"))
+  return(flags)
+}
+
 ### Add species name in final dataframe ----------------------------------
 Final.df <- function(final, sp){
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
@@ -123,101 +145,81 @@ Final.df <- function(final, sp){
 }
 
 
-# TESTING -----------------------------------------------------------------
 
-# Min temperature
-temp.min # The SpatRaster layer
-tmin <- as.data.frame(temp.min, xy = TRUE) # The first dataframe
-tmin.mean <- mean.df(tmin, "tmin", "df") # Compute the mean value and re-transform into a SpatRaster object
-tmin.mn <- mean.df(tmin, "tmin", "raster")
-Mapplot(tmin.mean, "VNM") # Plot the layer
 
-# Wind 
-wind # The spatraster layer
-wind.rs <- resample(wind, temp.min, "bilinear") # Reshape so that it fits the base layer geometry (tmin here)
-df <- as.data.frame(wind.rs, xy = T)
+# PROTOCOLE ---------------------------------------------------------------
+# Test if every function is working well and giving generalizable results.
+
+### Import raster data ---------------------------------------------------------------
+## Environmental data
+tmin <- GetEnvData("tmin", "Vietnam", 0.5)
+wind <- GetEnvData("wind", "Vietnam", 0.5)
+## Species data
+mola <- GetSpData("Amblypharyngodon mola")
+Hg <- GetSpData("Hemibagrus guttatus")
+
+
+### Set base layer ----------------------------------------------------------
+BASE <- tmin
+
+### Data  cleaning ---------------------------------------------------------------
+
+## Resample
+wind.rs <- resample(wind, BASE, "bilinear") # Adapt one raster's geometry to the base layer
+
+## Subset mean value (optional)
+# Minimal temperature
+tmin.df <- as.data.frame(temp.min, xy = TRUE) # The first dataframe
+tmin.mn <- mean.df(tmin, "tmin", "df") # # Compute the mean value and keep as a dataframe (useful?)
+tmin.mnr <- mean.df(layer = tmin, arg = "tmin", type = "raster") # Compute the mean value and re-transform into a SpatRaster object
+Mapplot(tmin.mn, "VNM") # Plot the layer (works with df or raster)
+
+# Wind
+wind.df <- as.data.frame(wind.rs, xy = T)
 wind.mn <- mean.df(wind.rs, "wind", "df") # Compute the mean
-Mapplot(wind.mn, "VNM") # Plot the layer (in Thailand here)
+Mapplot(wind.mn, "VNM") 
 
+# Merge environmental variables
+# Add both layers into the same dataframe 
+env <- tmin.mn %>%
+  left_join(wind.mn)
+env2 <- cbind(tmin.mean, mean_wind = wind.mn$mean_wind) # Method 2
 
-# Add both layers into the same dataframe
-# test1 <- tmin.mean %>% 
-#   left_join(wind.mn)
-test2 <- cbind(tmin.mean, mean_wind = wind.mn$mean_wind)
+# Convert back to a raster with all the environmental variables
+env.rast <- as_spatraster(env, crs = "EPSG:4326")
+Mapplot(layer = env.rast, ISO = "VNM") # Check if it works
 
-
-layer <- as_spatraster(test1, crs = "EPSG:4326")
-Mapplot(layer = layer, ISO = "VNM") # OK
-
-
+## Species data
 # Prepare species data ----------------------------------------------------
 ### For the species data
 mola.data <- mola$data
 mola.df <- as.data.frame(mola.data, xy = TRUE)
-plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Just an idea
+plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Check distribution quickly
 
-
-# Data cleaning -----------------------------------------------------------
-# With CoordinateCleaning package (Standardized cleaning)
+# Get simplified species dataset
 mola.df2 <- Sprast(mola, "no") # Only coordinates + presence
-mola.df3 <- Sprast(mola, "yes") # Cleaned df
-mola.flags <- clean_coordinates(x = mola.df3, 
-                                lon = "decimalLongitude", 
-                                lat = "decimalLatitude",
-                                countries = "countryCode",
-                                species = "species",
-                                tests = c("capitals", "centroids",
-                                          "equal", "zeros", "countries"))
-summary(mola.flags)
-# Problem with the country flags.... 100% wrong according to cc but not true...!
-# Omit this for the moment
-
-
-# Add coordinates to common df
-Hg.data <- Hg$data
-Hg.df <- as.data.frame(Hg.data, xy = TRUE)
+mola.cc <- Sprast(mola, "yes") # Cleaned df but with details (used for flags)
 Hg.df2 <- Sprast(Hg, "no")
-Hg.df3 <- Sprast(Hg, "yes")
-# Data cleaning for Hg species
-Hg.flags <- clean_coordinates(x = Hg.df3, 
-                                lon = "decimalLongitude", 
-                                lat = "decimalLatitude",
-                                countries = "countryCode",
-                                species = "species",
-                                tests = c("countries"))
-summary(Hg.flags)
+Hg.cc <- Sprast(Hg, "yes")
 
+# Check flags
+mola.flags <- Getflag(mola.cc) # 8 countries flagged
+Hg.flags <- Getflag(Hg.cc) # 0 flag
+
+# Merge all species in one df
 # sp <- mola.df2 %>%
 #   full_join(Hg.df2)
-sp2 <- rbind(mola.df2, Hg.df2)
-
-
-
+sp <- rbind(mola.df2, Hg.df2)
 
 # Assemble final data frame with environmental values + species
-finaldf <- Final.df(test1, sp)
-finaldf2 <- Final.df(test2, sp2)
+finaldf <- Final.df(env, sp) 
 # Convert to raster
 finalr <- as_spatraster(finaldf, crs = "EPSG:4326")
 finalr
 Mapplot(finalr, "VNM")
 
 
-
-##### Testing the coordinate cleaner function 'flag'
-data("d.countries") # Data with codes a2 and a3 to convert for flags
-head(d.countries)
-head(Hg.df3)
-
-Hg.df3$countryCode
-countcode <- d.countries %>%
-  select(a2, a3)
-Hg.df4 <- Hg.df3%>%
-  mutate()
-
-
-
-
+# TESTING -----------------------------------------------------------------
 
 ##### Checking the coordinates and row numbers
 # c = matrix(c(finaldf2$x[ps], finaldf2$y[ps]), ncol = 2)
@@ -225,4 +227,3 @@ Hg.df4 <- Hg.df3%>%
 
 ### Visualization of the data with rgbif ---------------------------------
 
-write.csv(Hg.df, "species.csv")
