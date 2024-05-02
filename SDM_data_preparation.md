@@ -142,12 +142,50 @@ And we can plot by converting it into a Spatraster.
 Fitting of the model with presence background data -> find an adapted method here. Allows to know if there is an overfitting or not. (Generalizable / transferable SDM) --> cf. paper when we are at this part
 - ‘target-group background’ approach to select the background sites (?)
 
+
+At first, need to download the data from fishbase to have the names of the species we want to focus on. We use the 30,000 entries as a baseline for the background and later filter by aquaculture status to run into the SDM. 
+
+```{r}
+# Background data 
+bg <- fb_tbl("species")
+bg$namesp <- paste(bg$Genus, bg$Species, sep = " ")
+
+
+# saveRDS(bg, file = "fishbase.rds")
+
+summary(bg)
+dim(bg)
+unique(bg$UsedforAquaculture) # Indication on what's used and what has potential
+fish_sp <- bg$namesp # Vector with species names for all fishes
+distrifish <- rgbif::occ_data(scientificName = fish_sp)
+
+saveRDS(distrifish, file = "fishbase.rds") # Save GBIF data to save time
+
+```
+
+
 **Modelling Species Distribution**
 Here, two modelling approaches, but depends on the context. --> Cf. paper
 
     Know what model to use before preparing the data??
 
 --> see the rest later.
+
+Importing the aquaculture species 
+```{r}
+bg_aqua <- bg %>%
+  tidyterra::filter(UsedforAquaculture == "commercial")
+dim(bg_aqua) # 358 entries
+# Add column with both genus and species name
+bg_aqua$namesp <- paste(bg_aqua$Genus, bg_aqua$Species, sep = " ")
+unique(bg_aqua$namesp)
+# Retrieve this as a vector
+aq_sp <- bg_aqua$namesp
+# Import distribution data for this list of species (GBIF or FishBase?)
+dist_aqua <- rgbif::occ_data(scientificName = aq_sp)
+saveRDS(dist_aqua, file = "aquafish.rds")
+```
+Here, 357 species under the label "commercial" have been imported according to the "used in aquaculture" variable.
 
 
 # References
