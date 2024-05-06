@@ -6,6 +6,7 @@ library(tidyverse)
 library(conflicted) 
 library(letsR)
 library(foreach)
+library(doParallel)
 library(DescTools)
 library(rfishbase)
 # Plot Maps
@@ -284,5 +285,8 @@ test <- as.data.frame(dist_aqua, xy = TRUE)
 
 ## Fit into base layer geometry
 sp <- Sprast(sp = dist_aqua, )
+
+foreach()
+
 ## Clean the species data
 Getflag(dist_aqua, )
