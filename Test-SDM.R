@@ -272,7 +272,8 @@ dist_aqua <- readRDS("aquafish.rds")
 # Roughly --> optimize with a foreach loop to do the same thing at the same time (352 sp.)
 for(i in 1:length(dist_aqua)){
   # Extract the data from the raster
-  obj <- as.data.frame(dist_aqua[[i]][["data"]], xy = TRUE)
+  3
+  
   # Clean the data (x,y,name species)
   obj_rast <- Sprast(obj, "no")
   
