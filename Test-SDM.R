@@ -244,21 +244,8 @@ Mapplot(finalr, "VNM")
 # 'FishBase.'
 
 # Background data 
-bg <- fb_tbl("species")
-bg$namesp <- paste(bg$Genus, bg$Species, sep = " ")
-
-
-# saveRDS(bg, file = "fishbase.rds")
-
-summary(bg)
-dim(bg)
-unique(bg$UsedforAquaculture) # Indication on what's used and what has potential
-fish_sp <- bg$namesp # Vector with species names for all fishes
-
-# Download the species required
-# distrifish <- rgbif::occ_data(scientificName = fish_sp)
-# saveRDS(distrifish, file = "fishbase.rds") # Save GBIF data for 
-distrifish <- readRDS("fishbase.rds") 
+setwd("C:/Users/User/Desktop/Internship/Data")
+distrifish1 <- readRDS("distrifish1.rds") # OK did work !!
 
 # Fit all of this in a grid
 
@@ -277,16 +264,28 @@ distrifish <- readRDS("fishbase.rds")
 # # Import distribution data for this list of species (GBIF or FishBase?)
 # dist_aqua <- rgbif::occ_data(scientificName = aq_sp)
 # saveRDS(dist_aqua, file = "aquafish.rds")
-setwd("C:/Users/User/Documents")
+
+# Import the data
+setwd("C:/Users/User/Desktop/Internship/Data")
 dist_aqua <- readRDS("aquafish.rds")
 
-test <- as.data.frame(dist_aqua, xy = TRUE)
-# Introduce each species in tje aquaculture dataframe into the SDM
+# Roughly --> optimize with a foreach loop to do the same thing at the same time (352 sp.)
+for(i in 1:length(dist_aqua)){
+  # Extract the data from the raster
+  obj <- as.data.frame(dist_aqua[[i]][["data"]], xy = TRUE)
+  # Clean the data (x,y,name species)
+  obj_rast <- Sprast(obj, "no")
+  
+  # Get the flags
+  obj_details <- Sprast(obj, "yes")
+  obj_flags <- Getflag(obj_details) # Supprimer les lignes qui ne servent a rien (flaguees)
+  
+}
 
-## Fit into base layer geometry
-sp <- Sprast(sp = dist_aqua, )
 
-foreach()
+# Introduce each species in the aquaculture dataframe into the SDM
 
-## Clean the species data
-Getflag(dist_aqua, )
+#foreach() # Utiliser le vecteur avec les noms d'espèces qui a permis de recuperer les 300sp
+# Ou alors de la longueur du tableau (+ rapide avec des nombres)
+
+
