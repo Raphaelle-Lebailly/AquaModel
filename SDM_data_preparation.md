@@ -109,6 +109,21 @@ To check if it works, we need to have a visual representation of the final dataf
 Cleaning the data allows to have a dataset without irrelevant values. 
 For that, we use the package 'CoordinateCleaner'. 
 
+```{r}
+Getflag <- function(data){
+  # Replace alpha-2 with alpha-3
+  indices <- match(data$countryCode, countcode$a2)
+  data$countryCode <- countcode$a3[indices]
+  # Flags
+  flags <- clean_coordinates(x = data, 
+                                lon = "decimalLongitude", 
+                                lat = "decimalLatitude",
+                                countries = "countryCode",
+                                species = "species",
+                                tests = c("countries"))
+  return(flags)
+}
+```
 
 ### 3. Merge data
 When the environmental and species dataframes are ready, we can merge them. 
@@ -138,6 +153,7 @@ And we can plot by converting it into a Spatraster.
 - Classification of species occurrences by species type (criteria depending on the contex of the study) and at the chosen point of view and scale (absolute distance, habitat) = ranges
 - Remove points with not enough occurrences to avoid overfitting
 
+
 **Background environment selection**
 Fitting of the model with presence background data -> find an adapted method here. Allows to know if there is an overfitting or not. (Generalizable / transferable SDM) --> cf. paper when we are at this part
 - ‘target-group background’ approach to select the background sites (?)
@@ -162,6 +178,7 @@ distrifish <- rgbif::occ_data(scientificName = fish_sp)
 saveRDS(distrifish, file = "fishbase.rds") # Save GBIF data to save time
 
 ```
+
 
 
 **Modelling Species Distribution**
