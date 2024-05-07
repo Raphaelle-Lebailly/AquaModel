@@ -37,15 +37,17 @@ countcode <- d.countries %>%
 # FUNCTIONS ---------------------------------------------------------------
 ### Get Data ---------------------------------------------------------------
 # Environmental data
-GetEnvData <- function(variable, country, resolution){
-  data <- worldclim_country(country, var = variable, res = resolution, path=tempdir())
-  return(data)
-}
+
+# See if it's useful for future code optimization
+# GetEnvData <- function(variable, country, resolution){
+#   data <- worldclim_country(country, var = variable, res = resolution, path=tempdir())
+#   return(data)
+# }
 # Species data
-GetSpData <- function(species){
-  data <- rgbif::occ_data(scientificName = species)
-  return(data)
-}
+# GetSpData <- function(species){
+#   data <- rgbif::occ_data(scientificName = species)
+#   return(data)
+# }
 
 ### Subset Mean value ---------------------------------------------------------------------------
 mean.df <- function(layer, arg, type){
@@ -122,7 +124,7 @@ Sprast <- function(sp, raw){
 
 
 ### Species data flagging
-Getflag <- function(data){
+Getflag <- function(datadf, info){ # Info allows us to know more about the flags 
   # Replace alpha-2 with alpha-3
   indices <- match(data$countryCode, countcode$a2)
   data$countryCode <- countcode$a3[indices]
@@ -133,7 +135,14 @@ Getflag <- function(data){
                                 countries = "countryCode",
                                 species = "species",
                                 tests = c("countries"))
-  return(flags)
+  # Remove the flagged lines
+  for(i in 1:length(flags)){
+    if(flagdf$.summary[i] == FALSE){datadf <- datadf[-i,]}
+  }
+  # Return
+  if(info == "yes"){
+    return(flags)
+  } else {return(datadf)}
 }
 
 ### Add species name in final dataframe ----------------------------------
@@ -214,6 +223,8 @@ Hg.cc <- Sprast(Hg, "yes")
 mola.flags <- Getflag(mola.cc) # 8 countries flagged
 Hg.flags <- Getflag(Hg.cc) # 0 flag
 
+
+
 # Merge all species in one df
 # sp <- mola.df2 %>%
 #   full_join(Hg.df2)
@@ -247,7 +258,7 @@ Mapplot(finalr, "VNM")
 setwd("C:/Users/User/Desktop/Internship/Data")
 distrifish1 <- readRDS("distrifish1.rds") # OK did work !!
 distrifish2 <- readRDS("distrifish2.rds")
-# distrifish3 <- readRDS("distrifish3.rds")
+distrifish3 <- readRDS("distrifish3.rds")
 
 
 # Penser a enlever les lignes qui se repetent (premieres lignes ou dernieres lignes)
@@ -274,18 +285,23 @@ setwd("C:/Users/User/Desktop/Internship/Data")
 dist_aqua <- readRDS("aquafish.rds")
 
 # Roughly --> optimize with a foreach loop to do the same thing at the same time (352 sp.)
-for(i in 1:length(dist_aqua)){
-  # Extract the data from the raster
-  3
-  
-  # Clean the data (x,y,name species)
-  obj_rast <- Sprast(obj, "no")
-  
-  # Get the flags
-  obj_details <- Sprast(obj, "yes")
-  obj_flags <- Getflag(obj_details) # Supprimer les lignes qui ne servent a rien (flaguees)
-  
+# Make a function to have the cleaned dataset in the end
+
+GetSpdf <- function(dataGBIF){
+  for(i in 1:length(dataGBIF)){
+    # Extract the data from the raster
+    obj <- as.data.frame(dataGBIF[[i]][["data"]], xy = TRUE)
+    # Get the flags
+    obj_details <- Sprast(obj, "yes")
+    obj_flags <- Getflag(obj_details) # Supprimer les lignes qui ne servent a rien (flaguees)
+    # Clean the data (x,y,name species)
+    obj_rast <- Sprast(obj, "no")
+  }
+  return(dfs)
 }
+
+
+do.call(rbind,listedf) # Obtenir automatiquement une liste de df
 
 
 # Introduce each species in the aquaculture dataframe into the SDM
