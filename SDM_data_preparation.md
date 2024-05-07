@@ -213,4 +213,7 @@ Now, I need to combine all of the species into one dataframe. Instead of having 
 Nguyen & Leung, 2022
 
 
---> Clean everything and make it more generalizable
+# List of things to do
+
+- Clean everything and make it more generalizable
+- Make a function so that it's 
