@@ -246,7 +246,11 @@ Mapplot(finalr, "VNM")
 # Background data 
 setwd("C:/Users/User/Desktop/Internship/Data")
 distrifish1 <- readRDS("distrifish1.rds") # OK did work !!
+distrifish2 <- readRDS("distrifish2.rds")
+# distrifish3 <- readRDS("distrifish3.rds")
 
+
+# Penser a enlever les lignes qui se repetent (premieres lignes ou dernieres lignes)
 # Fit all of this in a grid
 
 
