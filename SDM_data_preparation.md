@@ -205,6 +205,10 @@ saveRDS(dist_aqua, file = "aquafish.rds")
 Here, 357 species under the label "commercial" have been imported according to the "used in aquaculture" variable.
 
 
+Now, I need to combine all of the species into one dataframe. Instead of having a column for each species, we'll have a column 'species' with multiple times the locations where we find the species, so that the dimensions are smaller than the previous method. 
+
+
+
 # References
 Nguyen & Leung, 2022
 
