@@ -50,7 +50,7 @@ countcode <- d.countries %>%
 # }
 
 ### Subset Mean value ---------------------------------------------------------------------------
-mean.df <- function(layer, arg, type){
+GetMeanDf <- function(layer, arg, type){
   df <- as.data.frame(layer, xy =T)
   name.col <- paste0("mean_", arg)
   # Calculate mean value per row 
@@ -73,7 +73,7 @@ mean.df <- function(layer, arg, type){
 
 ### Overlay -----------------------------------------------------------------
 # Function to visualize the raster layer
-Mapplot <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector en fonction
+GetMap <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector en fonction
   if( (typeof(layer) != "S4")| (typeof(layer) != "S3")){
     layer <- as_spatraster(layer, crs = "EPSG:4326")
   }
@@ -93,16 +93,20 @@ Mapplot <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector e
 }
 
 ### Clean species data ------------------------------------------------------
-Sprast <- function(sp, raw){
+# individualCount deleted from select() function because does not systematically appear, same with datasetName and coordinateUncertaintyInMeters
+# Don't think we recquire them for the moment, add conditions later if that's the case. 
+# Sometimes, the data object is NULL, add a condition so that it does not count 
+
+GetClean <- function(sp, raw){
   # Data
-  sp.data <- sp$data
-  sp.df <- as.data.frame(sp.data, xy = TRUE)
+  #sp.data <- sp$data
+  sp.df <- as.data.frame(sp, xy = TRUE)
   # Filter relevant data
   sp.df <- sp.df %>%
     dplyr::select(species, decimalLongitude, 
-                  decimalLatitude, countryCode, individualCount,
-                  gbifID, family, taxonRank, coordinateUncertaintyInMeters,
-                  year, basisOfRecord, institutionCode, datasetName)
+                  decimalLatitude, countryCode, 
+                  gbifID, family, taxonRank,
+                  year, basisOfRecord, institutionCode)
   
   # remove records without coordinates
   sp.df <- sp.df %>%
@@ -122,31 +126,62 @@ Sprast <- function(sp, raw){
   }
 }
 
-
-### Species data flagging
-Getflag <- function(datadf, info){ # Info allows us to know more about the flags 
+### Species data flagging ------------------------------------------------------
+# Allows to get the flags and remove the rows flagged
+GetFlags <- function(datadf) { 
   # Replace alpha-2 with alpha-3
-  indices <- match(data$countryCode, countcode$a2)
-  data$countryCode <- countcode$a3[indices]
+  indices <- match(datadf$countryCode, countcode$a2)
+  datadf$countryCode <- countcode$a3[indices]
   # Flags
-  flags <- clean_coordinates(x = data, 
-                                lon = "decimalLongitude", 
-                                lat = "decimalLatitude",
-                                countries = "countryCode",
-                                species = "species",
-                                tests = c("countries"))
-  # Remove the flagged lines
-  for(i in 1:length(flags)){
-    if(flagdf$.summary[i] == FALSE){datadf <- datadf[-i,]}
-  }
-  # Return
-  if(info == "yes"){
-    return(flags)
-  } else {return(datadf)}
+  flags <- clean_coordinates(x = datadf, 
+                             lon = "decimalLongitude", 
+                             lat = "decimalLatitude",
+                             countries = "countryCode",
+                             species = "species",
+                             tests = c("countries"), verbose = FALSE) # Choice to have the details of the flags or not 
+  # Remove flags
+  flags <- subset(flags, .summary == TRUE)
+  df <- data.frame(x = flags$decimalLongitude, y = flags$decimalLatitude, species = flags$species)
+  return(df)
 }
 
+### Get species dataframe ------------------------------------------------------
+
+GetSpDf <- function(dataGBIF){
+  df_list <- list()
+  for(i in 1:length(dataGBIF)){
+    if (!is.null(dataGBIF[[i]]) && !is.null(dataGBIF[[i]][["data"]])) {
+    # Extract the data from the raster
+    df1 <- as.data.frame(dataGBIF[[i]][["data"]], xy = TRUE)
+    # Check if we have the recquired columns 
+    required_cols <- c("species", "decimalLongitude", "decimalLatitude", "countryCode")
+    if(all(required_cols %in% colnames(df1))) {
+      # Get the flags
+      df2 <- GetClean(df1, raw = "yes") # First cleaning step (delete unecessary columns etc.)
+      df3 <- GetFlags(df2) # Get the flagged rows and delete them
+    
+      df_list[[i]] <- df3
+    } else {
+      warning(paste("Element", i, "in dataGBIF is missing required columns. Skipping."))
+    }
+    print(i)
+    } else {
+      warning(paste("Element", i, "in dataGBIF is NULL or data is missing. Skipping."))
+    }
+  }
+  final_df <- do.call(rbind, df_list)
+  return(final_df)
+}
+
+# Takes a lot of time to run
+
+# Test
+# listedf <- GetSpDf(dist_aqua) # Takes some time to run...
+# saveRDS(listedf, "aquaspecies_df.rds") # Save the file as .rds
+aquaspecies_df <- read_rds("aquaspecies_df.rds")
+
 ### Add species name in final dataframe ----------------------------------
-Final.df <- function(final, sp, base){
+GetCombinedDf <- function(final, sp, base){
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
   s <- cellFromXY(base, xy = coord)
   p <- which(!is.na(s))
@@ -169,8 +204,8 @@ tmin <- worldclim_country("Vietnam", var = "tmin", res = 0.5, path=tempdir())
 # wind <- GetEnvData("wind", "Vietnam", 0.5)
 wind <- worldclim_country("Vietnam", var = "wind", res = 0.5, path=tempdir())
 ## Species data
-mola <- GetSpData("Amblypharyngodon mola")
-Hg <- GetSpData("Hemibagrus guttatus")
+mola <- occ_data(scientificName = "Amblypharyngodon mola")
+Hg <- occ_data(scientificName = "Hemibagrus guttatus")
 # mola <- rgbif::occ_data(scientificName = "Amblypharyngodon mola" )
 # Hg <- rgbif::occ_data(scientificName = "Hemibagrus guttatus")
 
@@ -268,13 +303,14 @@ distrifish3 <- readRDS("distrifish3.rds")
 
 # SDM test ----------------------------------------------------------------
 
+# bg <- fb_tbl("species")
 # bg_aqua <- bg %>%
 #   tidyterra::filter(UsedforAquaculture == "commercial")
 # dim(bg_aqua) # 358 entries
-# # Add column with both genus and species name
+# # # Add column with both genus and species name
 # bg_aqua$namesp <- paste(bg_aqua$Genus, bg_aqua$Species, sep = " ")
-# unique(bg_aqua$namesp)
-# # Retrieve this as a vector
+# # unique(bg_aqua$namesp)
+# # # Retrieve this as a vector
 # aq_sp <- bg_aqua$namesp
 # # Import distribution data for this list of species (GBIF or FishBase?)
 # dist_aqua <- rgbif::occ_data(scientificName = aq_sp)
@@ -284,24 +320,6 @@ distrifish3 <- readRDS("distrifish3.rds")
 setwd("C:/Users/User/Desktop/Internship/Data")
 dist_aqua <- readRDS("aquafish.rds")
 
-# Roughly --> optimize with a foreach loop to do the same thing at the same time (352 sp.)
-# Make a function to have the cleaned dataset in the end
-
-GetSpdf <- function(dataGBIF){
-  for(i in 1:length(dataGBIF)){
-    # Extract the data from the raster
-    obj <- as.data.frame(dataGBIF[[i]][["data"]], xy = TRUE)
-    # Get the flags
-    obj_details <- Sprast(obj, "yes")
-    obj_flags <- Getflag(obj_details) # Supprimer les lignes qui ne servent a rien (flaguees)
-    # Clean the data (x,y,name species)
-    obj_rast <- Sprast(obj, "no")
-  }
-  return(dfs)
-}
-
-
-do.call(rbind,listedf) # Obtenir automatiquement une liste de df
 
 
 # Introduce each species in the aquaculture dataframe into the SDM
