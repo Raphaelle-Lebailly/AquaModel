@@ -1,5 +1,5 @@
 # SDM FOR AQUACULTURE CANDIDATE SPECIES
-# setwd("C:/Users/User/Desktop/Internship/Data")
+setwd("C:/Users/User/Desktop/Internship/Data")
 # PACKAGES ----------------------------------------------------------------
 # Data Management
 library(tidyverse)
@@ -33,6 +33,12 @@ data("d.countries") # Data with codes a2 and a3 to convert for flags
 head(d.countries)
 countcode <- d.countries %>%
   select(a2, a3)
+
+# Species for SDM 
+aquaspecies_df <- read_rds("aquaspecies_df.rds")
+
+# Species for background
+
 
 # FUNCTIONS ---------------------------------------------------------------
 ### Get Data ---------------------------------------------------------------
@@ -171,14 +177,14 @@ GetSpDf <- function(dataGBIF){
   }
   final_df <- do.call(rbind, df_list)
   return(final_df)
-}
+} # Takes a lot of time to run (size data and loop)
 
-# Takes a lot of time to run
 
-# Test
-# listedf <- GetSpDf(dist_aqua) # Takes some time to run...
+### Manip to tidy up the data species into 1 dataframe:
+# listedf <- GetSpDf(dist_aqua) # Takes some time to run... (352 species)
+# 3 species ignored (NULL data or absence of recquired columns --> defined in the function)
 # saveRDS(listedf, "aquaspecies_df.rds") # Save the file as .rds
-aquaspecies_df <- read_rds("aquaspecies_df.rds")
+
 
 ### Add species name in final dataframe ----------------------------------
 GetCombinedDf <- function(final, sp, base){
