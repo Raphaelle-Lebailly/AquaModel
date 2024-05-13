@@ -38,6 +38,25 @@ countcode <- d.countries %>%
 aquaspecies_df <- read_rds("aquaspecies_df.rds")
 
 # Species for background
+# Background data 
+setwd("C:/Users/User/Desktop/Internship/Data")
+distrifish1 <- readRDS("distrifish1.rds") 
+distrifish2 <- readRDS("distrifish2.rds")
+distrifish3 <- readRDS("distrifish3.rds")
+distrifish4 <- readRDS("distrifish4.rds")
+distrifish5 <- readRDS("distrifish5.rds")
+
+# Combine all of the data
+distrifish2 <- distrifish2
+
+# First element is the same as the last one from the previous batch (my bad)
+distrifish2 <- distrifish2[-1]
+distrifish3 <- distrifish3[-1]
+distrifish4 <- distrifish4[-1]
+distrifish5 <- distrifish5[-1]
+
+# , distrifish3, distrifish4, distrifish5
+distrifish_all <- rbind(distrifish1, distrifish2)
 
 
 # FUNCTIONS ---------------------------------------------------------------
@@ -200,6 +219,9 @@ GetCombinedDf <- function(final, sp, base){
 
 
 
+
+
+
 # PROTOCOLE ---------------------------------------------------------------
 # Test if every function is working well and giving generalizable results.
 
@@ -294,12 +316,6 @@ Mapplot(finalr, "VNM")
 # supports experimental access to 'SeaLifeBase' data, which contains
 # nearly 200,000 species records for all types of aquatic life not covered by
 # 'FishBase.'
-
-# Background data 
-setwd("C:/Users/User/Desktop/Internship/Data")
-distrifish1 <- readRDS("distrifish1.rds") # OK did work !!
-distrifish2 <- readRDS("distrifish2.rds")
-distrifish3 <- readRDS("distrifish3.rds")
 
 
 # Penser a enlever les lignes qui se repetent (premieres lignes ou dernieres lignes)
