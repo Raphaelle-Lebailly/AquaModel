@@ -40,14 +40,6 @@ aquaspecies_df <- read_rds("aquaspecies_df.rds")
 # Species for background
 # Background data 
 setwd("C:/Users/User/Desktop/Internship/Data")
-distrifish1 <- readRDS("distrifish1.rds") 
-distrifish2 <- readRDS("distrifish2.rds")
-distrifish3 <- readRDS("distrifish3.rds")
-distrifish4 <- readRDS("distrifish4.rds")
-distrifish5 <- readRDS("distrifish5.rds")
-
-# Combine all of the data
-distrifish2 <- distrifish2
 
 # First element is the same as the last one from the previous batch (my bad)
 distrifish2 <- distrifish2[-1]
@@ -55,9 +47,10 @@ distrifish3 <- distrifish3[-1]
 distrifish4 <- distrifish4[-1]
 distrifish5 <- distrifish5[-1]
 
+# Combine all of the data
 # , distrifish3, distrifish4, distrifish5
-distrifish_all <- rbind(distrifish1, distrifish2)
-
+distrifish_all <- rbind(distrifish1, distrifish2) # Apparently not working
+# saveRDS(distrifish_all, "background_data.rds")
 
 # FUNCTIONS ---------------------------------------------------------------
 ### Get Data ---------------------------------------------------------------
@@ -218,6 +211,11 @@ GetCombinedDf <- function(final, sp, base){
 
 
 
+# Get combined dataframe for all species and environmental data
+Combined_df <- GetCombinedDf(env, aquaspecies_df, BASE)
+View(Combined_df)
+
+
 
 
 
@@ -234,8 +232,6 @@ wind <- worldclim_country("Vietnam", var = "wind", res = 0.5, path=tempdir())
 ## Species data
 mola <- occ_data(scientificName = "Amblypharyngodon mola")
 Hg <- occ_data(scientificName = "Hemibagrus guttatus")
-# mola <- rgbif::occ_data(scientificName = "Amblypharyngodon mola" )
-# Hg <- rgbif::occ_data(scientificName = "Hemibagrus guttatus")
 
 ### Set base  ----------------------------------------------------------
 ## Layer
@@ -250,13 +246,13 @@ wind.rs <- resample(wind, BASE, "bilinear") # Adapt one raster's geometry to the
 ## Subset mean value (optional)
 # Minimal temperature
 tmin.df <- as.data.frame(tmin, xy = TRUE) # The first dataframe
-tmin.mn <- mean.df(tmin, "tmin", "df") # # Compute the mean value and keep as a dataframe (useful?)
-tmin.mnr <- mean.df(layer = tmin, arg = "tmin", type = "raster") # Compute the mean value and re-transform into a SpatRaster object
+tmin.mn <- GetMeanDf(tmin, "tmin", "df") # # Compute the mean value and keep as a dataframe (useful?)
+tmin.mnr <- GetMeanDf(layer = tmin, arg = "tmin", type = "raster") # Compute the mean value and re-transform into a SpatRaster object
 Mapplot(tmin.mn, "VNM") # Plot the layer (works with df or raster)
 
 # Wind
 wind.df <- as.data.frame(wind.rs, xy = T)
-wind.mn <- mean.df(wind.rs, "wind", "df") # Compute the mean
+wind.mn <- GetMeanDf(wind.rs, "wind", "df") # Compute the mean
 Mapplot(wind.mn, "VNM") 
 
 # Merge environmental variables
@@ -277,13 +273,13 @@ mola.df <- as.data.frame(mola.data, xy = TRUE)
 plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Check distribution quickly
 
 # Get simplified species dataset
-mola.df2 <- Sprast(mola, "no") # Only coordinates + presence
-mola.cc <- Sprast(mola, "yes") # Cleaned df but with details (used for flags)
-Hg.df2 <- Sprast(Hg, "no")
-Hg.cc <- Sprast(Hg, "yes")
+mola.df2 <- GetClean(mola, "no") # Only coordinates + presence
+mola.cc <- GetClean(mola, "yes") # Cleaned df but with details (used for flags)
+Hg.df2 <- GetClean(Hg, "no")
+Hg.cc <- GetClean(Hg, "yes")
 
 # Check flags
-mola.flags <- Getflag(mola.cc) # 8 countries flagged
+mola.flags <- GetFlags(mola) # 8 countries flagged
 Hg.flags <- Getflag(Hg.cc) # 0 flag
 
 
@@ -294,7 +290,7 @@ Hg.flags <- Getflag(Hg.cc) # 0 flag
 sp <- rbind(mola.df2, Hg.df2)
 
 # Assemble final data frame with environmental values + species
-finaldf <- Final.df(env, sp, BASE) 
+finaldf <- GetCombinedDf(env, sp, BASE) 
 # Convert to raster
 finalr <- as_spatraster(finaldf, crs = "EPSG:4326")
 finalr
@@ -338,15 +334,5 @@ Mapplot(finalr, "VNM")
 # dist_aqua <- rgbif::occ_data(scientificName = aq_sp)
 # saveRDS(dist_aqua, file = "aquafish.rds")
 
-# Import the data
-setwd("C:/Users/User/Desktop/Internship/Data")
-dist_aqua <- readRDS("aquafish.rds")
-
-
-
-# Introduce each species in the aquaculture dataframe into the SDM
-
-#foreach() # Utiliser le vecteur avec les noms d'espèces qui a permis de recuperer les 300sp
-# Ou alors de la longueur du tableau (+ rapide avec des nombres)
 
 
