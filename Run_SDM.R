@@ -19,6 +19,8 @@ aquaspecies_df <- read_rds("aquaspecies_df.rds")
 # Background species data 
 bg <- read_rds("background_data.rds")
 
+# Environmental data
+tmin <- worldclim_global(var = "tmin", res = 0.5, path=tempdir())
 
 # FUNCTIONS ---------------------------------------------------------------
 ### LOADED FROM SOURCE CODE FOR THE FUNCTIONS
@@ -26,4 +28,5 @@ bg <- read_rds("background_data.rds")
 
 # PROTOCOLE ---------------------------------------------------------------
 # Test if every function is working well and giving generalizable results.
+
 
