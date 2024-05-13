@@ -167,18 +167,6 @@ GetSpDf <- function(dataGBIF){
 } # Takes a lot of time to run (size data and loop)
 
 
-### Manip to tidy up the data species into 1 dataframe:
-# listedf <- GetSpDf(dist_aqua) # Takes some time to run... (352 species)
-# 3 species ignored (NULL data or absence of recquired columns --> defined in the function)
-# saveRDS(listedf, "aquaspecies_df.rds") # Save the file as .rds
-
-
-
-# Rdundancies of rows that shouldn't be there
-# aquaspecies_df <- distinct(aquaspecies_df)
-# saveRDS(aquaspecies_df, "aquaspecies_df.rds")
-# dim(aquaspecies_df)
-
 ### Add species name in final dataframe ----------------------------------
 GetCombinedDf <- function(final, sp, base){
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
