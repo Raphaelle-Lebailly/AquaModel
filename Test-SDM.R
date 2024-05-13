@@ -1,5 +1,9 @@
 # SDM FOR AQUACULTURE CANDIDATE SPECIES
 setwd("C:/Users/User/Desktop/Internship/Data")
+
+# Source Function
+source("C:\Users\User\Documents\GitHub\AquaModel\Functions.R") # Allows to access the function
+
 # PACKAGES ----------------------------------------------------------------
 # Data Management
 library(tidyverse)
@@ -30,27 +34,17 @@ library(CoordinateCleaner)
 # DATA IMPORTATION --------------------------------------------------------
 # Alpha countries data
 data("d.countries") # Data with codes a2 and a3 to convert for flags
-head(d.countries)
+# head(d.countries)
 countcode <- d.countries %>%
   select(a2, a3)
 
 # Species for SDM 
 aquaspecies_df <- read_rds("aquaspecies_df.rds")
 
-# Species for background
-# Background data 
-setwd("C:/Users/User/Desktop/Internship/Data")
+# Background species data 
+bg <- read_rds("background_data.rds")
 
-# First element is the same as the last one from the previous batch (my bad)
-distrifish2 <- distrifish2[-1]
-distrifish3 <- distrifish3[-1]
-distrifish4 <- distrifish4[-1]
-distrifish5 <- distrifish5[-1]
 
-# Combine all of the data
-# , distrifish3, distrifish4, distrifish5
-distrifish_all <- rbind(distrifish1, distrifish2) # Apparently not working
-# saveRDS(distrifish_all, "background_data.rds")
 
 # FUNCTIONS ---------------------------------------------------------------
 ### Get Data ---------------------------------------------------------------
@@ -188,6 +182,7 @@ GetSpDf <- function(dataGBIF){
     }
   }
   final_df <- do.call(rbind, df_list)
+  final_df <- distinct(final_df) # To make sure to delete the redundant rows
   return(final_df)
 } # Takes a lot of time to run (size data and loop)
 
@@ -198,24 +193,29 @@ GetSpDf <- function(dataGBIF){
 # saveRDS(listedf, "aquaspecies_df.rds") # Save the file as .rds
 
 
+
+# Rdundancies of rows that shouldn't be there
+# aquaspecies_df <- distinct(aquaspecies_df)
+# saveRDS(aquaspecies_df, "aquaspecies_df.rds")
+# dim(aquaspecies_df)
+
 ### Add species name in final dataframe ----------------------------------
 GetCombinedDf <- function(final, sp, base){
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
-  s_sp <- cellFromXY(base, xy = coord)
+  s_sp <- cellFromXY(base, xy = coord) 
   coord2 <- matrix(c(final$x, final$y), ncol = 2) # Coordinates from env df
   s_env <- cellFromXY(base, xy = coord2)
-  
   # Target missmatches between the two dataframes
-  pos <- which(! s_sp %in% s_env)
-  s_sp <- s_sp[-pos]
-  sp <- sp[-pos,]
-  p <- which(!is.na(s_sp))
-  
-  final$species <- NA
-  
-  index <- tapply(1:length(s_env),s_env,function(x){return(x)})
+  pos <- which(! s_sp %in% s_env) # Check if there are still data outside range 
+  if(length(pos)>0) {
+    s_sp <- s_sp[-pos] 
+    sp <- sp[-pos,]
+  }
+  p <- which(!is.na(s_sp)) # select only non NA data
+  final$species <- NA # Create new species column
+  index <- tapply(1:length(s_env), s_env, function(x){return(x)})
   rn <- index[as.character(s_sp[p])]
-  
+  # Get final dataframe
   final$species[rn] <- sp$species[p]
   return(final)
 }
@@ -224,7 +224,10 @@ GetCombinedDf <- function(final, sp, base){
 
 # Get combined dataframe for all species and environmental data
 Combined_df1 <- GetCombinedDf(env, aquaspecies_df, tmin)
+Combined_df2 <- GetCombinedDf(env, test, tmin)
+
 length(which(!is.na(Combined_df1$species)))
+length(which(!is.na(Combined_df2$species)))
 
 View(Combined_df1)
 
@@ -258,15 +261,15 @@ wind.rs <- resample(wind, BASE, "bilinear") # Adapt one raster's geometry to the
 
 ## Subset mean value (optional)
 # Minimal temperature
-tmin.df <- as.data.frame(tmin, xy = TRUE) # The first dataframe
+# tmin.df <- as.data.frame(tmin, xy = TRUE) # The first dataframe
 tmin.mn <- GetMeanDf(tmin, "tmin", "df") # # Compute the mean value and keep as a dataframe (useful?)
-tmin.mnr <- GetMeanDf(layer = tmin, arg = "tmin", type = "raster") # Compute the mean value and re-transform into a SpatRaster object
-Mapplot(tmin.mn, "VNM") # Plot the layer (works with df or raster)
+# tmin.mnr <- GetMeanDf(layer = tmin, arg = "tmin", type = "raster") # Compute the mean value and re-transform into a SpatRaster object
+# Mapplot(tmin.mn, "VNM") # Plot the layer (works with df or raster)
 
 # Wind
-wind.df <- as.data.frame(wind.rs, xy = T)
+# wind.df <- as.data.frame(wind.rs, xy = T)
 wind.mn <- GetMeanDf(wind.rs, "wind", "df") # Compute the mean
-Mapplot(wind.mn, "VNM") 
+# Mapplot(wind.mn, "VNM") 
 
 # Merge environmental variables
 # Add both layers into the same dataframe 
@@ -275,15 +278,15 @@ env <- tmin.mn %>%
 env2 <- cbind(tmin.mn, mean_wind = wind.mn$mean_wind) # Method 2
 
 # Convert back to a raster with all the environmental variables
-env.rast <- as_spatraster(env, crs = "EPSG:4326")
-Mapplot(layer = env.rast, ISO = "VNM") # Check if it works
+# env.rast <- as_spatraster(env, crs = "EPSG:4326")
+# Mapplot(layer = env.rast, ISO = "VNM") # Check if it works
 
 ## Species data
 # Prepare species data ----------------------------------------------------
 ### For the species data
 mola.data <- mola$data
 mola.df <- as.data.frame(mola.data, xy = TRUE)
-plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Check distribution quickly
+# plot(mola.df$decimalLatitude, mola.df$decimalLongitude) # Check distribution quickly
 
 # Get simplified species dataset
 mola.df2 <- GetClean(mola, "no") # Only coordinates + presence
