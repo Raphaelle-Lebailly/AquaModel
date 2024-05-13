@@ -201,19 +201,32 @@ GetSpDf <- function(dataGBIF){
 ### Add species name in final dataframe ----------------------------------
 GetCombinedDf <- function(final, sp, base){
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
-  s <- cellFromXY(base, xy = coord)
-  p <- which(!is.na(s))
-  s1 <- s[p]
+  s_sp <- cellFromXY(base, xy = coord)
+  coord2 <- matrix(c(final$x, final$y), ncol = 2) # Coordinates from env df
+  s_env <- cellFromXY(base, xy = coord2)
+  
+  # Target missmatches between the two dataframes
+  pos <- which(! s_sp %in% s_env)
+  s_sp <- s_sp[-pos]
+  sp <- sp[-pos,]
+  p <- which(!is.na(s_sp))
+  
   final$species <- NA
-  final$species[s1] <- sp$species[p]
+  
+  index <- tapply(1:length(s_env),s_env,function(x){return(x)})
+  rn <- index[as.character(s_sp[p])]
+  
+  final$species[rn] <- sp$species[p]
   return(final)
 }
 
 
 
 # Get combined dataframe for all species and environmental data
-Combined_df <- GetCombinedDf(env, aquaspecies_df, BASE)
-View(Combined_df)
+Combined_df1 <- GetCombinedDf(env, aquaspecies_df, tmin)
+length(which(!is.na(Combined_df1$species)))
+
+View(Combined_df1)
 
 
 
