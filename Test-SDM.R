@@ -10,16 +10,12 @@ source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Allows to acces
 # DATA IMPORTATION --------------------------------------------------------
 # Alpha countries data
 data("d.countries") # Data with codes a2 and a3 to convert for flags
-# head(d.countries)
 countcode <- d.countries %>%
   select(a2, a3)
-
 # Species for SDM 
 aquaspecies_df <- read_rds("aquaspecies_df.rds")
-
 # Background species data 
 bg <- read_rds("background_data.rds")
-
 
 
 # FUNCTIONS ---------------------------------------------------------------
