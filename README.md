@@ -5,6 +5,8 @@
 With this project, we aim to built a Decision Making System for Aquaculture practices. 
 The main goal is to link nutritional issues (malnutrition or deficiencies) with species suitable for aquaculture and for the local environment. We would like to make it accessible for everyone, from scientists and researchers to potential aquaculture farmers, eventually. 
 
+![image](https://github.com/rLebailly/AquaModel/assets/126898170/72289171-c555-43b2-a11a-e657784cb918)
+
 Aquaculture is one of the most dynamic and promising food production area (Naylor *et al.*, 2023), which makes it interesting to develop tools for to better master it. 
 Futhermore, many species of fishes, crustaceans, molluscs and seaweed (from both seawater and freshwater) contain a lot of micronutrients that a vast majority of people living in the Global South lack.
 
