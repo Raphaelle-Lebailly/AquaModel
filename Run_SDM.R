@@ -15,12 +15,12 @@ data("d.countries") # Data with codes a2 and a3 to convert for flags
 countcode <- d.countries %>%
   select(a2, a3)
 # Species for SDM 
-aquaspecies_df <- read_rds("aquaspecies_df.rds")
+# aquaspecies_df <- read_rds("aquaspecies_df.rds")
 # Background species data 
-bg <- read_rds("background_data.rds")
+# bg <- read_rds("background_data.rds")
 
 # Environmental data
-tmin <- worldclim_global(var = "tmin", res = 0.5, path=tempdir())
+# tmin <- worldclim_global(var = "tmin", res = 0.5, path=tempdir())
 
 # FUNCTIONS ---------------------------------------------------------------
 ### LOADED FROM SOURCE CODE FOR THE FUNCTIONS
@@ -29,4 +29,32 @@ tmin <- worldclim_global(var = "tmin", res = 0.5, path=tempdir())
 # PROTOCOLE ---------------------------------------------------------------
 # Test if every function is working well and giving generalizable results.
 
+# Clean the background data
+# bg_clean <- GetSpDf(bg)
+# warnings()
+# saveRDS(bg_clean, "background_data_clean.rds")
 
+# Species for background
+# # Background data 
+# setwd("C:/Users/User/Desktop/Internship/Data")
+# distrifish1 <- readRDS("distrifish1.rds") 
+# distrifish2 <- readRDS("distrifish2.rds")
+# distrifish3 <- readRDS("distrifish3.rds")
+distrifish4 <- readRDS("distrifish4.rds")
+# distrifish5 <- readRDS("distrifish5.rds")
+# 
+# 
+# # First element is the same as the last one from the previous batch (my bad)
+# distrifish2 <- distrifish2[-1]
+# distrifish3 <- distrifish3[-1]
+distrifish4 <- distrifish4[-1]
+# distrifish5 <- distrifish5[-1]
+
+
+distrifish4_clean <- GetSpDf(distrifish4)
+saveRDS(distrifish4_clean, "background_data_clean4.rds")
+dim(distrifish4_clean)
+
+#  rm(list = ls())
+# bg <- readRDS("background_data_clean1.rds")
+# head(bg)
