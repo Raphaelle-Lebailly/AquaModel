@@ -85,7 +85,8 @@ GetMap <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector en
 }
 
 ### Clean species data ------------------------------------------------------
-# individualCount deleted from select() function because does not systematically appear, same with datasetName and coordinateUncertaintyInMeters
+# individualCount deleted from select() function because does not systematically appear, same with datasetName,
+# coordinateUncertaintyInMeters, institutionCode, basisOfRecord
 # Don't think we recquire them for the moment, add conditions later if that's the case. 
 # Sometimes, the data object is NULL, add a condition so that it does not count 
 
@@ -98,7 +99,7 @@ GetClean <- function(sp, raw){
     dplyr::select(species, decimalLongitude, 
                   decimalLatitude, countryCode, 
                   gbifID, family, taxonRank,
-                  year, basisOfRecord, institutionCode)
+                  year)
   
   # remove records without coordinates
   sp.df <- sp.df %>%
@@ -146,7 +147,7 @@ GetSpDf <- function(dataGBIF){
       # Extract the data from the raster
       df1 <- as.data.frame(dataGBIF[[i]][["data"]], xy = TRUE)
       # Check if we have the recquired columns 
-      required_cols <- c("species", "decimalLongitude", "decimalLatitude", "countryCode")
+      required_cols <- c("species", "decimalLongitude", "decimalLatitude", "countryCode", "year")
       if(all(required_cols %in% colnames(df1))) {
         # Get the flags
         df2 <- GetClean(df1, raw = "yes") # First cleaning step (delete unecessary columns etc.)
@@ -156,7 +157,7 @@ GetSpDf <- function(dataGBIF){
       } else {
         warning(paste("Element", i, "in dataGBIF is missing required columns. Skipping."))
       }
-      print(i)
+      # print(i)
     } else {
       warning(paste("Element", i, "in dataGBIF is NULL or data is missing. Skipping."))
     }
