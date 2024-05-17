@@ -26,6 +26,11 @@ library(sf)
 library(leaflet) # Web mapping
 library(CoordinateCleaner) 
 
+# install.packages("devtools")
+devtools::install_github("bio-oracle/biooracler")
+
+
+
 # FUNCTIONS ---------------------------------------------------------------
 ### Get Data ---------------------------------------------------------------
 # Environmental data
