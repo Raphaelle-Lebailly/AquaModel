@@ -40,21 +40,22 @@ countcode <- d.countries %>%
 # distrifish1 <- readRDS("distrifish1.rds") 
 # distrifish2 <- readRDS("distrifish2.rds")
 # distrifish3 <- readRDS("distrifish3.rds")
-distrifish4 <- readRDS("distrifish4.rds")
-# distrifish5 <- readRDS("distrifish5.rds")
+# distrifish4 <- readRDS("distrifish4.rds")
+distrifish5 <- readRDS("distrifish5.rds")
 # 
 # 
 # # First element is the same as the last one from the previous batch (my bad)
 # distrifish2 <- distrifish2[-1]
 # distrifish3 <- distrifish3[-1]
-distrifish4 <- distrifish4[-1]
-# distrifish5 <- distrifish5[-1]
+# distrifish4 <- distrifish4[-1]
+distrifish5 <- distrifish5[-1]
 
 
-distrifish4_clean <- GetSpDf(distrifish4)
-saveRDS(distrifish4_clean, "background_data_clean4.rds")
-dim(distrifish4_clean)
+distrifish5_clean <- GetSpDf(distrifish5)
+saveRDS(distrifish5_clean, "background_data_clean5.rds")
+dim(distrifish5_clean)
 
 #  rm(list = ls())
+# gc()
 # bg <- readRDS("background_data_clean1.rds")
 # head(bg)
