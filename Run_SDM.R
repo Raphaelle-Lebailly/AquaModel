@@ -1,5 +1,5 @@
 # Run SDM
-
+library(mgcv)
 setwd("C:/Users/User/Desktop/Internship/Data")# Download and load data (!!! LOCAL ADRESS)
 # Source Function
 source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Allows to access the functions (!!! LOCAL ADRESS)
@@ -100,8 +100,8 @@ dat <- GetModelData(pseudoabs, pres)
 
 
 # Clean the environment
-rm(list = ls())
-gc()
+# rm(list = ls())
+# gc()
 
 # Get the data for the targeted country (on hold for now)
 # VNM <- gadm(country = "VNM", level = 0, path=tempdir())
@@ -115,14 +115,15 @@ gc()
 
 # MODEL -------------------------------------------------------------------
 
-# sim_func <- function(names_x, name_y,dat){
-#   tmp_sdm<-gam(formula(paste(name_y,"~",paste(names_x,collapse='+'))),family = binomial, data=dat,select = TRUE, method="GCV.Cp")
-#   return(tmp_sdm)
-# }
-# 
-# names_x= c("Bio1","Bio2") # Then you can set your list of predictor variables
-# names_x1=paste("s(",names_x,",k=5)",sep="") #and for all variables that you want to allow a non-linear fit
-# sdm_obj=sim_func(names_x1,name_y, dat) #get back the sdm object
-# predict.gam(sdm_obj, newdata=newdat) #new data would be the environments that you want to extrapolate the model to.
+sim_func <- function(names_x, name_y,dat){
+  tmp_sdm<-gam(formula(paste(name_y,"~",paste(names_x,collapse='+'))),family = binomial, data=dat,select = TRUE, method="GCV.Cp")
+  return(tmp_sdm)
+}
+name_y = "PA"
+names_x= c("mean_tmin","mean_tmax") # Then you can set your list of predictor variables
+names_x1=paste("s(",names_x,",k=5)",sep="") # and for all variables that you want to allow a non-linear fit
+sdm_obj=sim_func(names_x1,name_y, dat) # get back the sdm object
+# Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
+predict.gam(sdm_obj, newdata=env) # new data would be the environments that you want to extrapolate the model to.
 
 
