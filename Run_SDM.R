@@ -25,6 +25,11 @@ pathtmax <- "C:/Users/User/Desktop/Internship/Data/Climate/tmax"
 # tmin <- worldclim_global(var = "tmin", res = 0.5, path = pathtmin)
 # tmax <- worldclim_global(var = "tmax", res = 0.5, path = pathtmax)
 
+## Download every environmental variable for aquatic env
+dir <- "C:/Users/User/Desktop/Internship/Data/Climate/aqua"
+layers <- download_layers(dataset_id, variables, constraints, fmt = "csv", directory = dir) # fmt is the format, can also be a raster
+
+
 ## Import data 
 # tmin
 path_tmin <- paste0(pathtmin,"/wc2.1_30s") # Make a loop in the future for the different files
@@ -124,6 +129,16 @@ names_x= c("mean_tmin","mean_tmax") # Then you can set your list of predictor va
 names_x1=paste("s(",names_x,",k=5)",sep="") # and for all variables that you want to allow a non-linear fit
 sdm_obj=sim_func(names_x1,name_y, dat) # get back the sdm object
 # Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
-predict.gam(sdm_obj, newdata=env) # new data would be the environments that you want to extrapolate the model to.
+Newdat <- env
+pred <- predict.gam(sdm_obj, newdata=Newdat) # new data would be the environments that you want to extrapolate the model to.
+Newdat$predictions <- pred # Add the predictions to the new data
 
-
+# Plot the results
+x11()
+ggplot(Newdat, aes(x = x, y = y, fill = predictions)) +
+  geom_tile() +
+  scale_fill_viridis_c() +
+  labs(title = "Probability of predicted presence of the species",
+       x = "Latitude",
+       y = "Longitude",
+       fill = "Probability of presence")
