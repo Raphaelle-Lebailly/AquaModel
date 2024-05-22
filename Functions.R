@@ -3,12 +3,14 @@
 # PACKAGES ----------------------------------------------------------------
 # Data Management
 library(tidyverse)
+library(lessR)
 library(conflicted) 
 library(letsR)
 library(foreach)
 library(doParallel)
 library(DescTools)
 library(rfishbase)
+library(rlang)
 # Plot Maps
 library(plotly)
 library(maps)
@@ -25,10 +27,7 @@ library(geodata) # Import environmental data
 library(sf) 
 library(leaflet) # Web mapping
 library(CoordinateCleaner) 
-
-# install.packages("devtools")
-devtools::install_github("bio-oracle/biooracler")
-
+library(biooracler) # Marine data
 
 
 # FUNCTIONS ---------------------------------------------------------------
@@ -45,6 +44,17 @@ devtools::install_github("bio-oracle/biooracler")
 #   data <- rgbif::occ_data(scientificName = species)
 #   return(data)
 # }
+
+
+# Resample multiple variables ---------------------------------------------
+
+GetDataResample <- function(listraster, baseraster){
+  newname <- paste0(arg, "_rs")
+  for(i in 1:length(listraster)){
+    
+  }
+}
+
 
 ### Subset Mean value ---------------------------------------------------------------------------
 GetMeanDf <- function(layer, arg, type){
@@ -194,3 +204,42 @@ GetCombinedDf <- function(final, sp, base){
   return(final)
 }
 
+
+
+### Get the dataframe to generate the model ---------------------------------
+GetModelData <- function(pseudoa, pres){
+  # Rename df
+  df1 <- pseudoa
+  df2 <- pres
+  # Merge dataframes
+  combined_df <- rbind(df1, df2)
+  # Remove NAs
+  ind <- which(is.na(combined_df$species))
+  combined_df <- combined_df[-ind,]
+  # Find duplications
+  duplicated_coords <- duplicated(combined_df[, c("x", "y")]) | duplicated(combined_df[, c("x", "y")], fromLast = TRUE)
+  # Enter PA value 
+  combined_df$PA <- 0
+  combined_df$PA[duplicated_coords] <- 1
+  # Delete the duplicated rows
+  df <- distinct(combined_df)
+  # Return final dataframe
+  return(df)
+}
+
+
+### Get subset of background data -------------------------------------------
+GetSubBg <-function(bg_df, ext){
+  # Select data inside given extend
+  bg_ext <- bg_df %>%
+    tidyterra::filter(x >= ext$min_lon & x <= ext$max_lon & 
+                        y >= ext$min_lat & y <= ext$max_lat)
+  # Select random 10,000 values
+  if(length(bg_ext) > 10000){
+    sub_bg <- bg_ext[.(random(10000)),]
+  } else {
+    sub_bg <- bg_ext
+    print(paste("Length <10,000 species:",length(sub_bg$species)))
+  }
+  return(sub_bg)
+} 
