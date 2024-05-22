@@ -31,12 +31,10 @@ path_tmin <- paste0(pathtmin,"/wc2.1_30s") # Make a loop in the future for the d
 raster_tmin <- list.files(path_tmin, pattern = "\\.tif$", full.names = TRUE)
 tmin <- rast(raster_tmin)
 
-
 # tmax
 path_tmax <- paste0(pathtmax,"/wc2.1_30s") # Make a loop in the future for the different files
 raster_tmax <- list.files(path_tmax, pattern = "\\.tif$", full.names = TRUE)
 tmax <- rast(raster_tmax)
-
 
 #### Select subsets of the rasters (so that we can work with it)
 vietnam_extent <- ext(102, 110, 8, 24)
@@ -96,14 +94,14 @@ colSums(!is.na(pres))
 colSums(!is.na(pseudoabs))
 
 # 8. Get Presence/Absence dataframe
-
+dat <- GetModelData(pseudoabs, pres)
 
 
 
 
 # Clean the environment
-# rm(list = ls())
-# gc()
+rm(list = ls())
+gc()
 
 # Get the data for the targeted country (on hold for now)
 # VNM <- gadm(country = "VNM", level = 0, path=tempdir())
