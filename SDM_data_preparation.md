@@ -24,6 +24,7 @@ The method will depend on the nature of the variable itself.
 
         layer.rsp
 
+For the moment, we chose the bilinear method.
 
 **Snap to grid**
 
@@ -216,4 +217,3 @@ Nguyen & Leung, 2022
 # List of things to do
 
 - Clean everything and make it more generalizable
-- Make a function so that it's 
