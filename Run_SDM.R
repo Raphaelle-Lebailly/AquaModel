@@ -25,10 +25,6 @@ pathtmax <- "C:/Users/User/Desktop/Internship/Data/Climate/tmax"
 # tmin <- worldclim_global(var = "tmin", res = 0.5, path = pathtmin)
 # tmax <- worldclim_global(var = "tmax", res = 0.5, path = pathtmax)
 
-## Download every environmental variable for aquatic env
-dir <- "C:/Users/User/Desktop/Internship/Data/Climate/aqua"
-layers <- download_layers(dataset_id, variables, constraints, fmt = "csv", directory = dir) # fmt is the format, can also be a raster
-
 
 ## Import data 
 # tmin
@@ -41,13 +37,37 @@ path_tmax <- paste0(pathtmax,"/wc2.1_30s") # Make a loop in the future for the d
 raster_tmax <- list.files(path_tmax, pattern = "\\.tif$", full.names = TRUE)
 tmax <- rast(raster_tmax)
 
-#### Select subsets of the rasters (so that we can work with it)
+## Download every environmental variable for aquatic env
+dir <- "C:/Users/User/Desktop/Internship/Data/Climate/aqua"
+# layers <- download_layers(dataset_id, variables, constraints, fmt = "csv", directory = dir) # fmt is the format, can also be a raster
+NO3 <- rast(paste0(dir,"/no3_baseline_2000_2018_depthsurf_8486_b388_df7c_U1716440129770.nc"))
+PO4 <- rast(paste0(dir,"/po4_baseline_2000_2018_depthsurf_6006_d51b_00e9_U1716440256420.nc"))
+SI <- rast(paste0(dir,"/si_baseline_2000_2018_depthsurf_395f_f84b_becc_U1716440390984.nc"))
+bathy <- rast(paste0(dir,"/terrain_characteristics_bea1_f9a7_03c1_U1716440607679.nc"))
+surftemp <- rast(paste0(dir,"/thetao_baseline_2000_2019_depthsurf_74ff_39fa_9adc_U1716440102349.nc"))
+# List of variables
+aqua_env <- list(NO3, PO4, SI, bathy, surftemp)
+
+#### Select subsets of the rasters (so that we can work with it) ==> AUTOMATIZE (list rasters to crop)
 vietnam_extent <- ext(102, 110, 8, 24)
+# WorldClim data
 tminVNM <- crop(tmin, vietnam_extent)
 tmaxVNM <- crop(tmax, vietnam_extent)
 rm(tmin)
 rm(tmax)
 gc()
+# Bio-ORACLE data
+NO3VNM <- crop(NO3, vietnam_extent)
+
+GetCroppedRaster <- function(list_raster, extent){
+  rast_ext <- list()
+  for(i in 1:length(list_raster)){
+    rast_ext <- c(rast_ext, crop(list_raster[i], extent))
+  }
+  return(rast_ext)
+}
+
+test <- GetCroppedRaster(aqua_env, vietnam_extent)
 
 # FUNCTIONS ---------------------------------------------------------------
 ### LOADED FROM SOURCE CODE FOR THE FUNCTIONS
