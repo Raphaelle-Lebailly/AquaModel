@@ -14,6 +14,7 @@ library(rlang)
 # Plot Maps
 library(plotly)
 library(maps)
+library(rnaturalearth)
 library(rgbif) 
 library(ggplot2) 
 library(RColorBrewer) 
@@ -207,33 +208,36 @@ GetCombinedDf <- function(final, sp, base){
 
 
 ### Get the dataframe to generate the model ---------------------------------
-GetModelData <- function(pseudoa, pres){
-  # Rename df
-  df1 <- pseudoa
-  df2 <- pres
+GetModelData <- function(pseudoabs, pres){
+  # Rename df and delete NA rows
+  df1 <- na.omit(pseudoabs)
+  df2 <- na.omit(pres)
+  # Add Presence/Absence column
+  df1$PA <- 0
+  df2$PA <- 1
+  # Select only the species with 20>= occurrences
+  df3 <- df2 %>%
+    group_by(species) %>%
+    tidyterra::filter(n() >= 5) %>% # Chose nb of occurrences depending on the 
+    ungroup()
   # Merge dataframes
-  combined_df <- rbind(df1, df2)
-  # Remove NAs
-  ind <- which(is.na(combined_df$species))
-  combined_df <- combined_df[-ind,]
-  # Find duplications
-  duplicated_coords <- duplicated(combined_df[, c("x", "y")]) | duplicated(combined_df[, c("x", "y")], fromLast = TRUE)
-  # Enter PA value 
-  combined_df$PA <- 0
-  combined_df$PA[duplicated_coords] <- 1
-  # Delete the duplicated rows
-  df <- distinct(combined_df)
-  # Return final dataframe
-  return(df)
+  species_list <- split(df3, df3$species)
+  list_df <- lapply(species_list, function(df) {
+    rbind(df, df1)
+  })
+  return(list_df)
 }
 
-
 ### Get subset of background data -------------------------------------------
-GetSubBg <-function(bg_df, ext){
+GetSubBg <-function(bg_df, extent){
+  # Get extent
+  name_reg <- paste0(extent)
+  region <- world_vect[world_vect$name == name_reg, ]
+  ext <- ext(region)
   # Select data inside given extend
   bg_ext <- bg_df %>%
-    tidyterra::filter(x >= ext$min_lon & x <= ext$max_lon & 
-                        y >= ext$min_lat & y <= ext$max_lat)
+    tidyterra::filter(x >= ext$xmin & x <= ext$xmax & 
+                        y >= ext$ymin & y <= ext$ymax)
   # Select random 10,000 values
   if(length(bg_ext) > 10000){
     sub_bg <- bg_ext[.(random(10000)),]
@@ -243,3 +247,40 @@ GetSubBg <-function(bg_df, ext){
   }
   return(sub_bg)
 } 
+
+
+# Get the cropped raster given the targeted area --------------------------
+GetCroppedRaster <- function(list_raster, extent){
+  # Get extent
+  name_reg <- paste0(extent)
+  region <- world_vect[world_vect$name == name_reg, ]
+  reg_ext <- ext(region)
+  # print(reg_ext)
+  # Crop raster
+  rast_ext <- list()
+  for (i in seq_along(list_raster)) {
+    rast_ext[[i]] <- crop(list_raster[[i]], reg_ext)
+  }
+  return(rast_ext)
+}
+
+
+
+# Group fusion for big dataframes -----------------------------------------
+GetMerged <- function(df_list, group_size = 10) {
+  merged_list <- list()
+  num_groups <- ceiling(length(df_list) / group_size)
+  
+  for (i in seq_len(num_groups)) {
+    start_index <- (i - 1) * group_size + 1
+    end_index <- min(i * group_size, length(df_list))
+    group <- df_list[start_index:end_index]
+    merged_group <- reduce(group, ~ full_join(.x, .y, by = c("x", "y")))
+    merged_list[[i]] <- merged_group
+  }
+  
+  # Fusionner tous les groupes ensemble
+  final_merged <- reduce(merged_list, ~ full_join(.x, .y, by = c("x", "y")))
+  
+  return(final_merged)
+}
