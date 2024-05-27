@@ -49,7 +49,7 @@ prim_prod <- rast(paste0(dir,"/phyc_baseline_2000_2020_depthsurf_7d39_02af_cdbd_
 # List of variables
 aqua_env <- list(NO3, PO4, SI, bathy, surftemp, prim_prod)
 
-NO3_df <- as.data.frame(NO3, xy = TRUE)
+# NO3_df <- as.data.frame(NO3, xy = TRUE)
 
 # Retreive data for countries extent
 world <- ne_countries(scale = "medium", returnclass = "sf")
@@ -165,7 +165,7 @@ for (i in seq_along(sdm_obj)) {
   Newpred[[i]]$predictions <- pred[[i]]
 }
 
-pred2 <- predict.gam(sdm_obj[[1]], newdata=Newdat) # new data would be the environments that you want to extrapolate the model to.
+# pred2 <- predict.gam(sdm_obj[[1]], newdata=Newdat) # new data would be the environments that you want to extrapolate the model to.
 Newdat$predictions <- pred # Add the predictions to the new data
 
 # Plot the results
@@ -177,3 +177,4 @@ ggplot(Newpred[[2]], aes(x = x, y = y, fill = predictions)) + # So freaking long
        x = "Latitude",
        y = "Longitude",
        fill = "Probability of presence")
+gc()
