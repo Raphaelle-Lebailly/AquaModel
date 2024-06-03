@@ -207,6 +207,7 @@ GetCombinedDf <- function(final, sp, base){
 
 
 
+
 ### Get the dataframe to generate the model ---------------------------------
 GetModelData <- function(pseudoabs, pres){
   # Rename df and delete NA rows
@@ -218,7 +219,7 @@ GetModelData <- function(pseudoabs, pres){
   # Select only the species with 20>= occurrences
   df3 <- df2 %>%
     group_by(species) %>%
-    tidyterra::filter(n() >= 5) %>% # Chose nb of occurrences depending on the 
+    tidyterra::filter(n() >= 20) %>% # Chose nb of occurrences depending on the 
     ungroup()
   # Merge dataframes
   species_list <- split(df3, df3$species)
@@ -228,8 +229,113 @@ GetModelData <- function(pseudoabs, pres){
   return(list_df)
 }
 
+
+# Get the cropped raster given the targeted area --------------------------
+GetCroppedRaster <- function(list_raster, extent){
+  # Get extent
+  name_reg <- paste0(extent)
+  region <- world_vect[world_vect$name == name_reg, ]
+  reg_ext <- ext(region)
+  # print(reg_ext)
+  # Crop raster
+  rast_ext <- list()
+  for (i in seq_along(list_raster)) {
+    rast_ext[[i]] <- crop(list_raster[[i]], reg_ext)
+  }
+  return(rast_ext)
+}
+
+
+
+# ------------------------------------------------------------------------------------
+# countries (vector list names english) 
+get_sp_country<-function(country, df){ 
+#  env_cropped <- GetCroppedRaster(tmin, country)
+  region <- world_vect[world_vect$name == country, ]
+  e <- ext(region)
+  rn=which(df$x >= e$xmin & df$x <= e$xmax & df$y>=e$ymin & df$y <=e$ymax)
+  if(length(rn)>0)
+  {
+    u=unique(df$species[rn])
+  return(u)
+  }else{
+    return("")
+  }
+}
+
+t=list()
+cnt=0
+for(i in regions){
+  cnt=cnt+1
+  print(cnt)
+  t[[i]] <- get_sp_country(i, aquaspecies_df)
+  
+}
+
+# For the background data
+t3=list()
+cnt=0
+for(i in regions){
+  cnt=cnt+1
+  print(cnt)
+  t3[[i]] <- get_sp_country(i, bg_df)
+}
+saveRDS(t3,"background_per_country.rds")
+
+setwd("C:/Users/User/Desktop/Internship/Data")
+# saveRDS(t,"species_per_country.rds") ### SAVE OBJECT
+
+# Get background species for all the patches we target
+# Not sure why this function is useful
+get_bg<-function(countries, df){
+  u_comb=NULL
+  for(i in countries){
+    region <- world_vect[world_vect$name == countries[i], ]
+    e <- ext(region)
+    rn=which(df$x >= e$xmin & df$x <= e$xmax & df$y>=e$ymin & df$y <=e$ymax)
+    if(length(rn)>0){
+    u_comb=rbind(df[rn,])
+    }
+  }
+  return(u_comb)
+}
+
+# t2 <- list()
+# cnt=0
+# for(i in regions){
+#   cnt=cnt+1
+#   print(cnt)
+#   t2[[i]] <- get_bg(i, bg_df)
+# }
+
+# t2 <- do.call(get_bg, list(regions, bg_df), quote = TRUE )
+saveRDS(t2,"background_per_country.rds")
+
+
+
+#--------------------------
+# 
+
+## Built species per country presence dataframe
+u=unique(aquaspecies_df$species) # List of all of the species names
+
+rn_sp=tapply(1:length(u),u,function(x){return(x)})
+
+df_spc=matrix(0,nrow=length(unique(aquaspecies_df$species)),ncol=length(regions))
+rownames(df_spc)=u
+colnames(df_spc)=regions
+for(i in 1:length(regions)){
+  df_spc[rn_sp[t[[i]]],i]=1
+}
+
+  
+
+### Render countries where species are observed and add pseudoabsences
+# Modify get sub bg function
+
 ### Get subset of background data -------------------------------------------
-GetSubBg <-function(bg_df, extent){
+#Get background data per country
+GetSubBg_count <-function(bg_df, extent){
   # Get extent
   name_reg <- paste0(extent)
   region <- world_vect[world_vect$name == name_reg, ]
@@ -248,22 +354,34 @@ GetSubBg <-function(bg_df, extent){
   return(sub_bg)
 } 
 
+# Do things PER SPECIES instead of per country
+# spc_df is the dataframe for the species per country presence
+# sp_name is the string of the name of the species of interest
 
-# Get the cropped raster given the targeted area --------------------------
-GetCroppedRaster <- function(list_raster, extent){
-  # Get extent
-  name_reg <- paste0(extent)
-  region <- world_vect[world_vect$name == name_reg, ]
-  reg_ext <- ext(region)
-  # print(reg_ext)
-  # Crop raster
-  rast_ext <- list()
-  for (i in seq_along(list_raster)) {
-    rast_ext[[i]] <- crop(list_raster[[i]], reg_ext)
+GetSubBg_sp <-function(bg_df, spc_df, sp_name){
+  # Get extent given the species names and where they occurr
+  # Line with the species of interest
+  spl <- spc_df[sp_name,] # Depends on how the dataframe is built (header = true or not)
+  for(i in spl){
+    spl %>%
+      tidyterra::filter(1)
   }
-  return(rast_ext)
+  count <- list()
+  # Select data inside given extent
+  bg_ext <- bg_df %>%
+    tidyterra::filter(x >= ext$xmin & x <= ext$xmax &
+                        y >= ext$ymin & y <= ext$ymax)
+  # Select random 10,000 values
+  if(length(bg_ext) > 10000){
+    sub_bg <- bg_ext[.(random(10000)),]
+  } else {
+    sub_bg <- bg_ext
+    print(paste("Length <10,000 species:",length(sub_bg$species)))
+  }
+  return(sub_bg)
 }
 
+GetSubBg_sp(bg_df,aquaspecies_df, 'Abramis brama')
 
 
 # Group fusion for big dataframes -----------------------------------------
