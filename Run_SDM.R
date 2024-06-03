@@ -20,22 +20,42 @@ bg_df <- read_rds("background_data_clean.rds")
 
 # Environmental data
 ## Download
-pathtmin <- "C:/Users/User/Desktop/Internship/Data/Climate/tmin" # Manually put the data inside separate files (otherwise, same file)
-pathtmax <- "C:/Users/User/Desktop/Internship/Data/Climate/tmax"
+# pathtmin <- "C:/Users/User/Desktop/Internship/Data/Climate/tmin" # Manually put the data inside separate files (otherwise, same file)
+# pathtmax <- "C:/Users/User/Desktop/Internship/Data/Climate/tmax"
+# pathtmean <- "C:/Users/User/Desktop/Internship/Data/Climate/tmean"
+# pathsolrad <- "C:/Users/User/Desktop/Internship/Data/Climate/solar_rad"
+pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
 # tmin <- worldclim_global(var = "tmin", res = 0.5, path = pathtmin)
 # tmax <- worldclim_global(var = "tmax", res = 0.5, path = pathtmax)
 
 
 ## Import data 
-# tmin
-path_tmin <- paste0(pathtmin,"/wc2.1_30s") # Make a loop in the future for the different files
-raster_tmin <- list.files(path_tmin, pattern = "\\.tif$", full.names = TRUE)
-tmin <- rast(raster_tmin)
+# # tmin
+# path_tmin <- paste0(pathtmin,"/wc2.1_30s") # Make a loop in the future for the different files
+# raster_tmin <- list.files(path_tmin, pattern = "\\.tif$", full.names = TRUE)
+# tmin <- rast(raster_tmin)
+# 
+# # tmax
+# path_tmax <- paste0(pathtmax,"/wc2.1_30s") # Make a loop in the future for the different files
+# raster_tmax <- list.files(path_tmax, pattern = "\\.tif$", full.names = TRUE)
+# tmax <- rast(raster_tmax)
 
-# tmax
-path_tmax <- paste0(pathtmax,"/wc2.1_30s") # Make a loop in the future for the different files
-raster_tmax <- list.files(path_tmax, pattern = "\\.tif$", full.names = TRUE)
-tmax <- rast(raster_tmax)
+# tmean
+# path_tmean <- paste0(pathtmean,"/wc2.1_30s_tavg") # Make a loop in the future for the different files
+# raster_tmean <- list.files(path_tmean, pattern = "\\.tif$", full.names = TRUE)
+# tmean <- rast(raster_tmean)
+# 
+# # Solar radiation
+# path_solrad <- paste0(pathsolrad,"/wc2.1_30s_srad") # Make a loop in the future for the different files
+# raster_solrad <- list.files(path_solrad, pattern = "\\.tif$", full.names = TRUE)
+# solrad <- rast(raster_solrad)
+
+# Bioclimatic variables
+pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
+path_bio <- paste0(pathbio,"/wc2.1_30s_bio") # Make a loop in the future for the different files
+raster_bio <- list.files(path_bio, pattern = "\\.tif$", full.names = TRUE) # Can't open this list of files ??
+bio <- rast(raster_bio)
+# 19 variables 
 
 ## Download every environmental variable for aquatic env
 dir <- "C:/Users/User/Desktop/Internship/Data/Climate/aqua"
@@ -47,24 +67,29 @@ bathy <- rast(paste0(dir,"/terrain_characteristics_bea1_f9a7_03c1_U1716440607679
 surftemp <- rast(paste0(dir,"/thetao_baseline_2000_2019_depthsurf_74ff_39fa_9adc_U1716440102349.nc"))
 prim_prod <- rast(paste0(dir,"/phyc_baseline_2000_2020_depthsurf_7d39_02af_cdbd_U1716500021103.nc"))
 # List of variables
-aqua_env <- list(NO3, PO4, SI, bathy, surftemp, prim_prod)
+env_var <- list(NO3, PO4, SI, bathy, surftemp, prim_prod)
+bio_names <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+               "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+               "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
 
-# NO3_df <- as.data.frame(NO3, xy = TRUE)
-
-# Retreive data for countries extent
+names(bio) <- bio_names
+bio_list <- lapply(1:nlyr(bio), function(i) bio[[i]])
+env_var <- c(env_var, bio_list) # Add the extracted and renamed layers
+rm(bio_list)
+gc()
+# Retrieve data for countries extent
 world <- ne_countries(scale = "medium", returnclass = "sf")
 world_vect <- vect(world)
 regions <- world$name
 
-# WorldClim data (continental data)
-cont_env <- list(tmin, tmax)
-env_cropped2 <- GetCroppedRaster(cont_env, 'India') # A bit longer because the size of the objects is bigger
-rm(tmin) ; rm(tmax)
+# Cropping to the desired extent
+env_cropped <- GetCroppedRaster(env_var, 'India')
+# rm(bio)
+# rm(env_var)
 gc()
-plot(env_cropped2[[2]])
 
-env_cropped <- GetCroppedRaster(aqua_env, 'India') # Start with caps on for the country
-plot(env_cropped[[5]])
+# Check
+# plot(env_cropped[[2]])
 
 
 # FUNCTIONS ---------------------------------------------------------------
@@ -74,8 +99,9 @@ plot(env_cropped[[5]])
 # Test if every function is working well and giving generalizable results.
 
 #### Environmental data management
-# 1. Set base
-BASE <- env_cropped2[[1]]
+# 1. Set base (any variable from 'bio')
+BASE <- env_cropped[[19]]
+
 
 # 2. Adjust geometry of the other rasters
 # tmax.rs <- resample(env_cropped2[[2]], BASE, "bilinear")
@@ -84,6 +110,7 @@ env_rs <- list()
 for (i in seq_along(env_cropped)) {
   env_rs[[i]] <- resample(env_cropped[[i]], BASE, "bilinear") # OK
 }
+
 
 # 3. Get mean value
 # tmin.mn <- GetMeanDf(tminVNM, "tmin", "df")
@@ -95,21 +122,54 @@ for (i in seq_along(env_rs)) {
   env_mn[[i]] <- as.data.frame(env_rs[[i]], xy = TRUE)
 }
 
-
+rm(bio)
+rm(NO3, PO4, prim_prod,SI, surftemp, bathy)
+gc()
 # 4. Merge dataframes (mean or not)
 # env <- tmin.mn %>%
 #   left_join(tmax.mn)
 
 # Try to find optimized function
-env_mg <- GetMerged(env_mn, group_size = length(aqua_env))
-
+env_mg <- GetMerged(env_mn, group_size = length(env_var))
+rm(env_mn)
+gc()
 # 5. Prepare the species data
 # Aquaspecies are the species of interest
 # bg_df is the background species 
 # These data have already been cleaned (delete the flags etc.)
 
 # 6. Assemble df with species + environmental data = Presence dataframe
-pres <- GetCombinedDf(env_mg, aquaspecies_df, BASE) # A bit long, could use some optimizing
+
+sp <- as.matrix(aquaspecies_df)
+final <- as.matrix(env_mg)
+base <- BASE
+rm(aquaspecies_df)
+
+# Changer pour que ce soit compatible avec des matrices (-lourd que dataframe)
+GetCombinedDf <- function(final, sp, base){
+  coord <- matrix(c(sp[,"x"], sp[,"y"]), ncol = 2) # Coordinates from species df
+  s_sp <- cellFromXY(base, xy = coord) 
+  coord2 <- matrix(c(final[,"x"], final[,"y"]), ncol = 2) # Coordinates from env df
+  s_env <- cellFromXY(base, xy = coord2)
+  # Target missmatches between the two dataframes
+  pos <- which(! s_sp %in% s_env) # Check if there are still data outside range 
+  if(length(pos)>0) {
+    s_sp <- s_sp[-pos] 
+    sp <- sp[-pos,]
+  }
+  p <- which(!is.na(s_sp)) # select only non NA data
+  final$species <- NA # Create new species column
+  index <- tapply(1:length(s_env), s_env, function(x){return(x)})
+  rn <- index[as.character(s_sp[p])]
+  # Get final dataframe
+  final$species[rn] <- sp$species[p]
+  return(final)
+}
+
+
+pres <- GetCombinedDf(final, sp, BASE) # A bit long, could use some optimizing
+world <- ne_countries(scale = "medium", returnclass = "sf") # No presence of France geometry
+
 
 
 # 7. Get Pseudo-absences df
@@ -119,6 +179,8 @@ set.seed(10)
 subbg <- GetSubBg(bg_df, 'India')
 # Get the pseudoabsences dataframe
 pseudoabs <- GetCombinedDf(env_mg, subbg, BASE)
+
+pseudoabs <- GetCombinedDf(env_mg, bg_df, BASE)
 
 # Check for NAs
 colSums(is.na(pres))
