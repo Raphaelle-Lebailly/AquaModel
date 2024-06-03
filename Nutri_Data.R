@@ -36,11 +36,20 @@ library(RColorBrewer)
 library(leaflet)
 
 # Mapping data
-world <- ne_countries(scale = "medium", returnclass = "sf")
-
+world <- ne_countries(scale = "medium", returnclass = "sf") # No presence of France geometry
 # Get the nutritional data
 setwd("C:/Users/User/Desktop/Internship/Data/Nutrition")
 
+world$iso_a3[161] <- "FRA"
+world$iso_a3[89] <- "NOR"
+world$iso_a3[59] <- "SOL"
+world$iso_a3[131] <- "KOS"
+world$iso_a3[239] <- "KAS"
+world$iso_a3[227] <- "AUS"
+world$iso_a3[230] <- "AUS"
+world$iso_a3[186] <- "CYN"
+
+which(world$iso_a3 == -99) # Check the replacement
 
 ### GLOBAL NUTRITIONAL NEEDS --------------------------------------------
 
@@ -103,43 +112,72 @@ macro <- macro_df_clean %>% # Remove unused rows
 # macro$Entity <- factor(macro$Entity)
 macro <- droplevels(macro)
 
-# Map
-x11()
+# GENERATE MAP FOR EACH IMPORTANT VARIABLE
+# Class character
+macro$ISO3 <- as.character(macro$ISO3)
+world$iso_a3 <- as.character(world$iso_a3)
+
 macro$ISO3 <- countrycode(macro$Entity, "country.name", "iso3c") # Add ISO3 column
 macro$ISO3 <- factor(macro$ISO3)
 macro_map <- joinCountryData2Map(macro, joinCode = "ISO3", nameJoinColumn = "ISO3")
-macro_map <- under_map[row.names(under_map) != 'Antarctica',]
-mapCountryData(macro_map, nameColumnToPlot = "Share.of.the.daily.caloric.intake.that.comes.from.animal.protein", 
+macro_map <- macro_map[row.names(macro_map) != 'Antarctica',]
+x11()
+mapCountryData(macro_map, nameColumnToPlot = "Share.of.the.daily.caloric.intake.that.comes.from.fat", 
                catMethod = "pretty", missingCountryCol = gray(.8),
                colourPalette = "heat", addLegend = TRUE, borderCol = "gray39", 
                mapTitle = "", oceanCol = "lightcyan")
 
 # Interactive map
-x11()
-mapview(macro_map,   zcol = "Share.of.the.daily.caloric.intake.that.comes.from.animal.protein", 
-        col.regions = brewer.pal(5, "YlOrRd"), na.color = "grey")
+# x11()
+# mapview(macro_map,   zcol = "Share.of.the.daily.caloric.intake.that.comes.from.fat", 
+#         col.regions = brewer.pal(5, "YlOrRd"), na.color = "grey")
 
 # Tenter une carte + jolie
 world_data <- merge(world, macro, by.x = "iso_a3", by.y = "ISO3", all.x = TRUE)
-# Plot avec ggplot2
-x11()
-image <- ggplot(data = world_data) +
-  geom_sf(aes(fill = Share.of.the.daily.caloric.intake.that.comes.from.animal.protein)) +
-  scale_fill_viridis_c(option = "viridis", na.value = "lightgray") +
+world_data2 <- merge(macro, world, by.y = "iso_a3", by.x = "ISO3", all.x = TRUE)
+
+# names(world_data2)[names(world_data2) == 'ISO3'] <- 'iso_a3'
+if (!inherits(world_data2, "sf")) {
+  world_data2 <- st_as_sf(world_data2)
+}
+subfr <- world_data2 %>%
+  tidyterra::filter(ISO3 == "FRA")
+
+macro$Share.of.the.daily.caloric.intake.that.comes.from.fat
+# Delete NAs in the targeted colums, if not --> not displaying the results
+world_data3 <- world_data2 %>%
+  tidyterra::filter(!is.na(Share.of.the.daily.caloric.intake.that.comes.from.fat))
+
+
+### LACKING SOME COUNTRIES BECAUSE OF ne_country() FUNCTION!!!
+# title = "Share of the daily caloric intake from animal protein"
+image <- ggplot() +
+  geom_sf(data = world) +
+  geom_sf(data = world_data3, aes(fill = Share.of.the.daily.caloric.intake.that.comes.from.fat)) +
+  scale_fill_gradientn(
+    colors = rev(heat.colors(20)),  # Inverse l'échelle de couleur "heat"
+    ## Percentage
+    # limits = c(0, 45),              # Définir les bornes de l'échelle de couleur
+    # breaks = seq(0, 50, by = 10),   # Ajouter des graduations
+    ## Calories
+    limits = c(0,40),
+    breaks = seq(0,40, by = 10),
+    na.value = "grey",
+    name = "Calories" # Percentage, or Cal
+  ) +
   theme_minimal() +
   theme(
     panel.background = element_rect(fill = "lightblue"),
     panel.grid = element_line(color = "white"),
-    legend.position = "bottom"
-  ) +
-  labs(
-    title = "Share of the daily caloric intake from animal protein",
-    fill = "Percentage"
-  )
-ggsave(file="test.pdf", plot=image, width=10, height=8)
+    legend.position = "bottom",
+    legend.title = element_text(size=15, hjust = -1, vjust = 1),
+    legend.text = element_text(angle = 315, vjust = 0)
+  ) 
+print(image)
+# Save plot
+ggsave(file="caloric_supply.pdf", plot=image, width=10, height=8)
 
-
-
+which(world_data2$ISO3=="SOL")
 
 
 
@@ -170,7 +208,6 @@ rm(fish_compo)
 
 # Retrieve the list of latin names for english names
 df_species<- df_species[,0:10]
-
 lat_names <- df_species$SCIENTIFIC.NAME..AUTHOR
 eng_names <- df_species$ENGLISH.NAME
 # Get the dataframe of the fish species names
@@ -180,6 +217,7 @@ names$lat_names <- str_extract(names$lat_names, "^[A-Za-z]+\\s[A-Za-z]+")
 names <- names %>%
    tidyterra::filter(!grepl("Includes", lat_names)) # Chose nb of occurrences depending on the
 names <- droplevels(names)
+
 
 
 # Define levels "low", "medium" and high
