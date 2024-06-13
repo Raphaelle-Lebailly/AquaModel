@@ -13,10 +13,14 @@ source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Allows to acces
 # data("d.countries") # Data with codes a2 and a3 to convert for flags
 # countcode <- d.countries %>%
 #   select(a2, a3)
-# Species for SDM 
-aquaspecies_df <- read_rds("aquaspecies_df.rds")
-# Background species data 
-bg_df <- read_rds("background_data_clean.rds")
+
+aquaspecies_df <- read_rds("aquaspecies_df.rds") # Species for SDM 
+bg_df <- read_rds("background_data_clean.rds") # Background species data 
+sp_per_count <- read_rds("species_per_country.rds")
+aquasp_per_count <- read_rds("presence_sp_per_count.rds")
+spbg_per_count <- read_rds("background_per_country.rds")
+
+
 
 # Environmental data
 ## Download
@@ -41,11 +45,13 @@ surftemp <- rast(paste0(dir,"/thetao_baseline_2000_2019_depthsurf_74ff_39fa_9adc
 prim_prod <- rast(paste0(dir,"/phyc_baseline_2000_2020_depthsurf_7d39_02af_cdbd_U1716500021103.nc"))
 # List of variables
 env_var <- list(NO3, PO4, SI, bathy, surftemp, prim_prod)
-bio_names <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
-               "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
-               "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+rm(NO3, PO4, SI, bathy, surftemp, prim_prod)
+names_x <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
+             "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+             "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+             "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
 
-names(bio) <- bio_names
+names(bio) <- names_x
 bio_list <- lapply(1:nlyr(bio), function(i) bio[[i]])
 env_var <- c(env_var, bio_list) # Add the extracted and renamed layers
 rm(bio_list)
@@ -57,12 +63,12 @@ regions <- world$name
 
 # Cropping to the desired extent
 env_cropped <- GetCroppedRaster(env_var, 'India')
-# rm(bio)
-# rm(env_var)
+rm(bio)
+rm(env_var)
 gc()
 
 # Check
-# plot(env_cropped[[2]])
+plot(env_cropped[[2]])
 
 
 # FUNCTIONS ---------------------------------------------------------------
