@@ -20,36 +20,9 @@ bg_df <- read_rds("background_data_clean.rds")
 
 # Environmental data
 ## Download
-# pathtmin <- "C:/Users/User/Desktop/Internship/Data/Climate/tmin" # Manually put the data inside separate files (otherwise, same file)
-# pathtmax <- "C:/Users/User/Desktop/Internship/Data/Climate/tmax"
-# pathtmean <- "C:/Users/User/Desktop/Internship/Data/Climate/tmean"
-# pathsolrad <- "C:/Users/User/Desktop/Internship/Data/Climate/solar_rad"
 pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
-# tmin <- worldclim_global(var = "tmin", res = 0.5, path = pathtmin)
-# tmax <- worldclim_global(var = "tmax", res = 0.5, path = pathtmax)
-
 
 ## Import data 
-# # tmin
-# path_tmin <- paste0(pathtmin,"/wc2.1_30s") # Make a loop in the future for the different files
-# raster_tmin <- list.files(path_tmin, pattern = "\\.tif$", full.names = TRUE)
-# tmin <- rast(raster_tmin)
-# 
-# # tmax
-# path_tmax <- paste0(pathtmax,"/wc2.1_30s") # Make a loop in the future for the different files
-# raster_tmax <- list.files(path_tmax, pattern = "\\.tif$", full.names = TRUE)
-# tmax <- rast(raster_tmax)
-
-# tmean
-# path_tmean <- paste0(pathtmean,"/wc2.1_30s_tavg") # Make a loop in the future for the different files
-# raster_tmean <- list.files(path_tmean, pattern = "\\.tif$", full.names = TRUE)
-# tmean <- rast(raster_tmean)
-# 
-# # Solar radiation
-# path_solrad <- paste0(pathsolrad,"/wc2.1_30s_srad") # Make a loop in the future for the different files
-# raster_solrad <- list.files(path_solrad, pattern = "\\.tif$", full.names = TRUE)
-# solrad <- rast(raster_solrad)
-
 # Bioclimatic variables
 pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
 path_bio <- paste0(pathbio,"/wc2.1_30s_bio") # Make a loop in the future for the different files
@@ -122,121 +95,103 @@ for (i in seq_along(env_rs)) {
   env_mn[[i]] <- as.data.frame(env_rs[[i]], xy = TRUE)
 }
 
-rm(bio)
-rm(NO3, PO4, prim_prod,SI, surftemp, bathy)
+# 3. Get mean value
+# tmin.mn <- GetMeanDf(tminVNM, "tmin", "df")
+# tmax.mn <- GetMeanDf(tmax.rs, "tmax", "df") 
+# For the list of env data
+# NO NEED FOR BIO-ORACLE DATA, ALREADY GOOD FORMAT (get the dataframes only)
+env_mn <- list()
+for (i in seq_along(env_rs)) {
+  env_mn[[i]] <- as.data.frame(env_rs[[i]], xy = TRUE)
+}
+rm(env_rs)
 gc()
 # 4. Merge dataframes (mean or not)
 # env <- tmin.mn %>%
 #   left_join(tmax.mn)
-
 # Try to find optimized function
+
+# Fusionner tous les groupes ensemble
+
 env_mg <- GetMerged(env_mn, group_size = length(env_var))
-rm(env_mn)
-gc()
 # 5. Prepare the species data
 # Aquaspecies are the species of interest
 # bg_df is the background species 
 # These data have already been cleaned (delete the flags etc.)
-
 # 6. Assemble df with species + environmental data = Presence dataframe
-
-sp <- as.matrix(aquaspecies_df)
-final <- as.matrix(env_mg)
-base <- BASE
-rm(aquaspecies_df)
-
-# Changer pour que ce soit compatible avec des matrices (-lourd que dataframe)
-GetCombinedDf <- function(final, sp, base){
-  coord <- matrix(c(sp[,"x"], sp[,"y"]), ncol = 2) # Coordinates from species df
-  s_sp <- cellFromXY(base, xy = coord) 
-  coord2 <- matrix(c(final[,"x"], final[,"y"]), ncol = 2) # Coordinates from env df
-  s_env <- cellFromXY(base, xy = coord2)
-  # Target missmatches between the two dataframes
-  pos <- which(! s_sp %in% s_env) # Check if there are still data outside range 
-  if(length(pos)>0) {
-    s_sp <- s_sp[-pos] 
-    sp <- sp[-pos,]
-  }
-  p <- which(!is.na(s_sp)) # select only non NA data
-  final$species <- NA # Create new species column
-  index <- tapply(1:length(s_env), s_env, function(x){return(x)})
-  rn <- index[as.character(s_sp[p])]
-  # Get final dataframe
-  final$species[rn] <- sp$species[p]
-  return(final)
-}
-
-
-pres <- GetCombinedDf(final, sp, BASE) # A bit long, could use some optimizing
-world <- ne_countries(scale = "medium", returnclass = "sf") # No presence of France geometry
-
-
-
+rm(env_mn)
+gc()
+pres <- GetCombinedDf(env_mg, aquaspecies_df, BASE) # First function (primitive)
+gc()
 # 7. Get Pseudo-absences df
 # Select random subset of the background dataset (n = 10,000)
 set.seed(10)
 # Get the background subset
-subbg <- GetSubBg(bg_df, 'India')
+subbg <- GetSubBg(bg_df, 'India') # First function (primitive)
 # Get the pseudoabsences dataframe
 pseudoabs <- GetCombinedDf(env_mg, subbg, BASE)
-
-pseudoabs <- GetCombinedDf(env_mg, bg_df, BASE)
-
+gc()
 # Check for NAs
 colSums(is.na(pres))
 colSums(is.na(pseudoabs))
 colSums(!is.na(pres))
 colSums(!is.na(pseudoabs))
-
 # 8. Get Presence/Absence dataframe
 # Get the list of the combined dataframes
-
-dat <- GetModelData(pseudoabs, pres) # Works but 20 occurrences might be too much, or try to counter balance with more aquaculture species
-# Here, 5 occurrences to have at least some data in the list 
-
-
+dat <- GetModelData(pseudoabs, pres, 3) # Works but 20 occurrences might be too much, or try to counter balance with more aquaculture species
+# Here, 3 occurrences to have at least some data in the list 
 # Clean the environment
 # rm(list = ls())
 # gc()
-
 # MODEL -------------------------------------------------------------------
-
 # Faire un lapply pour le modele avec la liste de dataframes dat[[i]] acces dans la liste des dfs
 sim_func <- function(names_x, name_y,dat){
   tmp_sdm <- gam(formula(paste(name_y,"~",paste(names_x,collapse='+'))),family = binomial, data=dat,select = TRUE, method="GCV.Cp")
   return(tmp_sdm)
 }
 name_y <- "PA"
-col_names <- colnames(dat[[1]]) # Retrieve colnames to have variable names
-selected_col_names <- col_names[3:(length(col_names) - 2)]
-names_x <- selected_col_names # Then you can set your list of predictor variables
+names_x <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
+             "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+             "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+             "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
 names_x1 <- paste("s(",names_x,",k=5)",sep="") # and for all variables that you want to allow a non-linear fit
+gc()
 # Do a loop to get all the predictions for the whole list of dataframes
 sdm_obj <- list()
 for (i in seq_along(dat)) {
   sdm_obj[[i]] <- sim_func(names_x1,name_y, dat[[i]])
 }
-sdm_obj2=sim_func(names_x1,name_y, dat[[1]]) # get back the sdm object
+sdm_obj2=sim_func(names_x1,name_y, dat[[3]]) # get back the sdm object
+sdm_obj2
 # Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
 Newdat <- env_mg
 # Loop for predictions
 pred <- list()
 Newpred <- rep(list(Newdat), length(dat))
 for (i in seq_along(sdm_obj)) {
-  pred[[i]] <- predict.gam(sdm_obj[[i]], newdata=Newdat) # Maybe not the quickest way
+  pred[[i]] <- predict.gam(sdm_obj[[i]], newdata=Newdat, type = "response") # ADD type = 'response' to have results on 0-1 scale
   Newpred[[i]]$predictions <- pred[[i]]
 }
 
 # pred2 <- predict.gam(sdm_obj[[1]], newdata=Newdat) # new data would be the environments that you want to extrapolate the model to.
-Newdat$predictions <- pred # Add the predictions to the new data
+# Newdat$predictions <- pred # Add the predictions to the new data
 
-# Plot the results
-x11()
-ggplot(Newpred[[2]], aes(x = x, y = y, fill = predictions)) + # So freaking long to display
-  geom_tile() +
+#### Plot the results -----------------------------------------------------
+
+# world_vect <- st_read(system.file("shape/nc.shp", package="sf"))
+country_geom <- world[world$name == 'India', ]
+reg_ext <- ext(country_geom)
+
+# x11() # Trop Lourd
+image <- ggplot(Newpred[[3]]) + # So freaking long to display
+  geom_tile(aes(x = x, y = y, fill = predictions)) +
+  geom_sf(data = country_geom, fill = NA, color = "black", size = 0.4) +
   scale_fill_viridis_c() +
-  labs(title = "Probability of predicted presence of the species",
-       x = "Latitude",
-       y = "Longitude",
-       fill = "Probability of presence")
+  labs( x = "Latitude",
+        y = "Longitude",
+        fill = "Probability of presence")
+
+# coord_sf(xlim = range(env_mg$x), ylim = range(env_mg$y), expand = FALSE) # Ajuster les limites  
+# setwd("C:/Users/User/Desktop/Internship/Images")
+ggsave("India_3.jpg", image, width = 10, height = 8)
 gc()
