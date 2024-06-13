@@ -272,16 +272,16 @@ get_sp_country<-function(country, df){
 # }
 
 # For the background data
-t3=list()
-cnt=0
-for(i in regions){
-  cnt=cnt+1
-  print(cnt)
-  t3[[i]] <- get_sp_country(i, bg_df)
-}
-saveRDS(t3,"background_per_country.rds")
+# t3=list()
+# cnt=0
+# for(i in regions){
+#   cnt=cnt+1
+#   print(cnt)
+#   t3[[i]] <- get_sp_country(i, bg_df)
+# }
+# saveRDS(t3,"background_per_country.rds")
 
-setwd("C:/Users/User/Desktop/Internship/Data")
+# setwd("C:/Users/User/Desktop/Internship/Data")
 # saveRDS(t,"species_per_country.rds") ### SAVE OBJECT
 
 # Get background species for all the patches we target
