@@ -209,7 +209,7 @@ GetCombinedDf <- function(final, sp, base){
 
 
 ### Get the dataframe to generate the model ---------------------------------
-GetModelData <- function(pseudoabs, pres){
+GetModelData <- function(pseudoabs, pres, nb){
   # Rename df and delete NA rows
   df1 <- na.omit(pseudoabs)
   df2 <- na.omit(pres)
@@ -219,7 +219,7 @@ GetModelData <- function(pseudoabs, pres){
   # Select only the species with 20>= occurrences
   df3 <- df2 %>%
     group_by(species) %>%
-    tidyterra::filter(n() >= 20) %>% # Chose nb of occurrences depending on the 
+    tidyterra::filter(n() >= nb) %>% # Chose nb of occurrences depending on the 
     ungroup()
   # Merge dataframes
   species_list <- split(df3, df3$species)
@@ -250,7 +250,6 @@ GetCroppedRaster <- function(list_raster, extent){
 # ------------------------------------------------------------------------------------
 # countries (vector list names english) 
 get_sp_country<-function(country, df){ 
-#  env_cropped <- GetCroppedRaster(tmin, country)
   region <- world_vect[world_vect$name == country, ]
   e <- ext(region)
   rn=which(df$x >= e$xmin & df$x <= e$xmax & df$y>=e$ymin & df$y <=e$ymax)
@@ -263,14 +262,14 @@ get_sp_country<-function(country, df){
   }
 }
 
-t=list()
-cnt=0
-for(i in regions){
-  cnt=cnt+1
-  print(cnt)
-  t[[i]] <- get_sp_country(i, aquaspecies_df)
-  
-}
+# t=list()
+# cnt=0
+# for(i in regions){
+#   cnt=cnt+1
+#   print(cnt)
+#   t[[i]] <- get_sp_country(i, aquaspecies_df)
+#   
+# }
 
 # For the background data
 t3=list()
@@ -287,7 +286,7 @@ setwd("C:/Users/User/Desktop/Internship/Data")
 
 # Get background species for all the patches we target
 # Not sure why this function is useful
-get_bg<-function(countries, df){
+get_bg <-function(countries, df){
   u_comb=NULL
   for(i in countries){
     region <- world_vect[world_vect$name == countries[i], ]
@@ -309,7 +308,7 @@ get_bg<-function(countries, df){
 # }
 
 # t2 <- do.call(get_bg, list(regions, bg_df), quote = TRUE )
-saveRDS(t2,"background_per_country.rds")
+# saveRDS(t2,"background_per_country.rds")
 
 
 
@@ -327,8 +326,10 @@ colnames(df_spc)=regions
 for(i in 1:length(regions)){
   df_spc[rn_sp[t[[i]]],i]=1
 }
+# saveRDS(df_spc,"presence_sp_per_count.rds")
+# df_spc is the dataframe of presences of species per country
 
-  
+
 
 ### Render countries where species are observed and add pseudoabsences
 # Modify get sub bg function
@@ -381,8 +382,28 @@ GetSubBg_sp <-function(bg_df, spc_df, sp_name){
   return(sub_bg)
 }
 
-GetSubBg_sp(bg_df,aquaspecies_df, 'Abramis brama')
+sp_names <- unique(aquaspecies_df$species)
+# List of dataframes with presences and pseudoabsences
+GetSubBg_sp(bg_df,df_spc, sp_names)
 
+GetSubBg <-function(bg_df, extent){
+  # Get extent
+  name_reg <- paste0(extent)
+  region <- world_vect[world_vect$name == name_reg, ]
+  ext <- ext(region)
+  # Select data inside given extend
+  bg_ext <- bg_df %>%
+    tidyterra::filter(x >= ext$xmin & x <= ext$xmax & 
+                        y >= ext$ymin & y <= ext$ymax)
+  # Select random 10,000 values
+  if(length(bg_ext) > 10000){
+    sub_bg <- bg_ext[.(random(10000)),]
+  } else {
+    sub_bg <- bg_ext
+    print(paste("Length <10,000 species:",length(sub_bg$species)))
+  }
+  return(sub_bg)
+} 
 
 # Group fusion for big dataframes -----------------------------------------
 GetMerged <- function(df_list, group_size = 10) {
