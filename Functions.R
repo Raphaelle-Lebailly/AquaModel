@@ -335,6 +335,26 @@ for(i in 1:length(regions)){
 # Modify get sub bg function
 
 ### Get subset of background data -------------------------------------------
+# First function to get the background species given an extent
+GetSubBg <-function(bg_df, extent){
+  # Get extent
+  name_reg <- paste0(extent)
+  region <- world_vect[world_vect$name == name_reg, ]
+  ext <- ext(region)
+  # Select data inside given extend
+  bg_ext <- bg_df %>%
+    tidyterra::filter(x >= ext$xmin & x <= ext$xmax & 
+                        y >= ext$ymin & y <= ext$ymax)
+  # Select random 10,000 values
+  if(length(bg_ext) > 10000){
+    sub_bg <- bg_ext[.(random(10000)),]
+  } else {
+    sub_bg <- bg_ext
+    print(paste("Length <10,000 species:",length(sub_bg$species)))
+  }
+  return(sub_bg)
+} 
+
 #Get background data per country
 GetSubBg_count <-function(bg_df, extent){
   # Get extent
@@ -417,7 +437,7 @@ GetMerged <- function(df_list, group_size = 10) {
     merged_group <- reduce(group, ~ full_join(.x, .y, by = c("x", "y")))
     merged_list[[i]] <- merged_group
   }
-  
+
   # Fusionner tous les groupes ensemble
   final_merged <- reduce(merged_list, ~ full_join(.x, .y, by = c("x", "y")))
   
