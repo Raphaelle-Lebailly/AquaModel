@@ -1,12 +1,28 @@
-# 
+# Goal: implement the background data of all the countries containing the species of interest
 
-setwd("C:/Users/User/Desktop/Internship/Data")# Download and load data (!!! LOCAL ADRESS)
-# Source Function
-source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # 
+
+# Load data, packages and functions ---------------------------------------
+library(SeaVal) # Add countries names according to coordinates
+
+setwd("C:/Users/User/Desktop/Internship/Data") # Download and load data (!!! LOCAL ADRESS)
+source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Load functions
 
 # Species data
 aquaspecies_df <- read_rds("aquaspecies_df.rds")
 bg_df <- read_rds("background_data_clean.rds")
+
+# Visualize the data in the world (plot)
+# data("World")
+# img <- bg_df %>%
+#   tidyterra::filter(species == "Abramis brama") %>%
+#   ggplot(aes(x = x, y = y)) + 
+#   # geom_sf(world) +
+#   scale_fill_viridis_c() +
+#   theme_minimal() +
+#   theme(panel.background = element_rect(fill = 'light blue'))
+# x11()
+# img
+
 
 # Environmental data
 ## Download
@@ -30,51 +46,69 @@ env_var <- list(NO3, PO4, SI, bathy, surftemp, prim_prod)
 bio_names <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
                "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
                "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
-
 names(bio) <- bio_names
 bio_list <- lapply(1:nlyr(bio), function(i) bio[[i]])
 env_var <- c(env_var, bio_list) # Add the extracted and renamed layers
 rm(bio_list)
 gc()
 
-
 # World data (COMPLICATED SO ON HOLD FOR THE MOMENT)
 world <- ne_countries(scale = "medium", returnclass = "sf")
 world_vect <- vect(world)
 regions <- world$name
 
-# Set base object
-BASE <- env_var[[19]]
-
-# Not cropping before!!
+# Set base object # Not cropping before!!
+# BASE <- env_var[[19]] # Fine grid (terrestrial raster)
+BASE <- env_var[[1]] # Gross grid (aquatic raster)
 
 # List of species per country
-sp_per_count <- readRDS('species_per_country.rds')
-spbg_per_count <- readRDS('background_per_country.rds')
-
-# Presence of species 
-sp2count <- readRDS("presence_sp_per_count.rds")
-
-# Select the lines in 
-# select_pres <- list()
-# for(i in 1:dim(sp_per_count)[1]){
-#   select_pres <- sp_per_count %>%
-#     tidyterra::filter(sp_per_count[i] == 1)
-# }
+# sp_per_count <- readRDS('species_per_country.rds')
+# spbg_per_count <- readRDS('background_per_country.rds')
+# # Presence of species 
+# sp2count <- readRDS("presence_sp_per_count.rds")
 
 
 
 # We're trying to work with index within the raster file instead of the dataframe because 
 # Very costly in terms of time and memory
-coords <- matrix(c(aquaspecies_df$x, aquaspecies_df$y), ncol = 2) # Coordinates from aquaspecies df
-cellnb <- cellFromXY(BASE, xy = coords)
-x=colFromX(BASE,x=aquaspecies_df$x)
-y=rowFromY(BASE,y=aquaspecies_df$y)
-head(cellnb)
-bg_df2$env1 = env[[1]][bg_df2$row,bg_df2$col,1]
+# coords <- matrix(c(aquaspecies_df$x, aquaspecies_df$y), ncol = 2) # Coordinates from aquaspecies df
+# cellnb <- cellFromXY(BASE, xy = coords)
+# x=colFromX(BASE,x=aquaspecies_df$x)
+# y=rowFromY(BASE,y=aquaspecies_df$y)
+# head(cellnb)
+# bg_df2$env1 = env[[1]][bg_df2$row,bg_df2$col,1]
 
 
+# Data management ---------------------------------------------------------
 
+### ENVIRONMENTAL DATA
+
+# Here, we decide arbitrarily to target India in order to have an interesting example
+COUNTRY <- 'India'
+
+# Crop the raster to the extent wanted
+env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRY)
+rm(NO3, PO4, SI, bathy, surftemp, prim_prod, env_var) ; gc() # Remove unused raster
+
+# Resample: adapt all raster geometry (resolution) to one reference raster
+env_rs <- list()
+for (i in seq_along(env_crop)) {
+  env_rs[[i]] <- resample(env_crop[[i]], BASE, "bilinear") # OK
+}
+
+# Convert into dataframe
+env_df <- list()
+for (i in seq_along(env_rs)) {
+  env_df[[i]] <- as.data.frame(env_rs[[i]], xy = TRUE)
+}
+rm(env_crop, env_rs) ; gc()
+
+# Merge (+ cell ID)
+env_mg <- GetMerged(df_list = env_df, group_size = length(env_df))
+rm(env_df) ; gc()
+
+
+# SPECIES DATA
 
 # Test map
 # Current geometry from rnaturalearth package but multiple issues to map the data
@@ -82,65 +116,57 @@ bg_df2$env1 = env[[1]][bg_df2$row,bg_df2$col,1]
 # world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
 # plot(world2)
 
+# Add countries column in bg dataframe AND aquaspecies dataframe 
+bg_df2 <- bg_df
+rm(bg_df) ; gc() # Clean memory (CM)
+bg_df2 <- tidyterra::rename(bg_df2, lon = x, lat = y)
+bg_df2 <- as.data.table(bg_df2)
+bg_df2 <- add_country_names(bg_df2)
+bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
+bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+
+aq_df2 <- aquaspecies_df # For aquaculture species
+rm(aquaspecies_df) ; gc() # CM
+aq_df2 <- tidyterra::rename(aq_df2, lon = x, lat = y)
+aq_df2 <- as.data.table(aq_df2)
+aq_df2 <- add_country_names(aq_df2)
+aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
+aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 
 
 
+# Set target species (later on, vector of species found in the targeted area )
+SPECIES <-  "Anabas testudineus"
 
-# Faire un lapply pour le modele avec la liste de dataframes dat[[i]] acces dans la liste des dfs
-sim_func <- function(names_x, name_y,dat){
-  tmp_sdm <- gam(formula(paste(name_y,"~",paste(names_x,collapse='+'))),family = binomial, data=dat,select = TRUE, method="GCV.Cp")
-  return(tmp_sdm)
-}
-name_y <- "PA"
-# col_names <- colnames(dat[[1]]) # Retrieve colnames to have variable names
-# selected_col_names <- col_names[3:(length(col_names) - 2)]
-# List of selected variables
-names_x <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
-           "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
-               "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
-               "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
-names_x1 <- paste("s(",names_x,",k=5)",sep="") # and for all variables that you want to allow a non-linear fit
-# Do a loop to get all the predictions for the whole list of dataframes
+# Get background species according to targeted species
+# TEST (generate this table later on in the SDM section)
+spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # MAYBE NEED TO CHANGE THE COLUMN NAMES BACK TO x AND y!!!!
+subsp <- aq_df2 %>% # Filter by targeted species name AND country 
+  tidyterra::filter(species == SPECIES, country == COUNTRY)
 
 
 # Get a list of the countries where aquaculture species occur
-get_countries <- function(data) {
-  result <- list()
-  for (i in 1:nrow(data)) {
-    result[[rownames(data)[i]]] <- colnames(data)[data[i, ] == 1]
-  }
-  return(result)
-}
-# List of countries where the species has been observed
-count_per_sp <- get_countries(sp2count)
-species <- unique(aquaspecies_df$species) # List of species names
-countries <- names(sp_per_count) # List of countries names
+# get_countries <- function(data) {
+#   result <- list()
+#   for (i in 1:nrow(data)) {
+#     result[[rownames(data)[i]]] <- colnames(data)[data[i, ] == 1]
+#   }
+#   return(result)
+# }
+# # List of countries where the aquaculture species has been observed
+# count_per_sp <- get_countries(sp2count)
+# species <- unique(aquaspecies_df$species) # List of species names
+# countries <- names(sp_per_count) # List of countries names
 
 # Prepare data
-bg_df$PA <- 0 # Add presence absence column
-aquaspecies_df$PA <- 1 
+spbg$PA <- 0 # Add presence absence column
+subsp$PA <- 1 
 
-# Get the background species associated with aquaculture species
-get_unique_species <- function(species_names, count_per_sp, spbg_per_count) {
-  data <- vector(mode='list', length= length(species_names))
-  names(data) <- species_names
-  
-  for(i in seq_along(species_names)){
-    count <- count_per_sp[[species_names[i]]] # Use species name to get countries
-    spbg <- unname(unlist(spbg_per_count[count])) # Get the species per country and flatten the list
-    t2 <- unique(spbg) # Remove the duplicates
-    # Add the result in the list
-    data[[i]] <- t2
-  } 
-  return(data)
-}
+# Merge the species dataframes
+dat <- rbind(subsp, spbg)
 
-# Get the list
-unique_species <- get_unique_species(species, count_per_sp, sp_per_count)
 
 # Generate per species the equation
-# species <- unique(aquaspecies_df$species)
-
 get_species_df <- function(speciesname, unique_sp) {
   # Sélectionner le subset pour l'espèce donnée dans aquaspecies_df
   sub_sp <- aquaspecies_df %>%
@@ -159,7 +185,11 @@ get_species_df <- function(speciesname, unique_sp) {
   
   return(df)
 }
+# PAS TOTALEMENT CORRECT CAR APPEL DES ESPECES BACKGROUND PAR NOM AU LIEU DE LOCATION
+# CE QUI VEUT DIRE APPEL DE TOUTES LES LOCALISATIONS OU LES ESPECES BACKGROUND SONT 
+# ET NON JUSTE CELLES D'INTERET (pays de l'espèce ciblee)
 
+# Test
 sp_comb_df <- get_species_df('Abramis brama', unique_species) # OK
 
 # Call this function in a loop for species dataframes
@@ -168,7 +198,7 @@ sp_comb_df <- get_species_df('Abramis brama', unique_species) # OK
 # Get environmental data for areas targeted
 get_crop_env <- function(species_names, count_per_sp){
   for(i in seq_along(species_names)){
-  count <- count_per_sp[[species_names[i]]]
+    count <- count_per_sp[[species_names[i]]]
   }
   for(i in seq_along(count)){
     name_reg <- paste0(i)
@@ -181,6 +211,33 @@ get_crop_env <- function(species_names, count_per_sp){
   }
   return(rast_ext)
 }
+
+
+
+
+
+
+
+
+# SDM ---------------------------------------------------------------------
+
+
+# FtestVirtual()# Faire un lapply pour le modele avec la liste de dataframes dat[[i]] acces dans la liste des dfs
+sim_func <- function(names_x, name_y,dat){
+  tmp_sdm <- gam(formula(paste(name_y,"~",paste(names_x,collapse='+'))),family = binomial, data=dat,select = TRUE, method="GCV.Cp")
+  return(tmp_sdm)
+}
+name_y <- "PA"
+# col_names <- colnames(dat[[1]]) # Retrieve colnames to have variable names
+# selected_col_names <- col_names[3:(length(col_names) - 2)]
+# List of selected variables
+names_x <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
+           "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+               "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+               "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+names_x1 <- paste("s(",names_x,",k=5)",sep="") # and for all variables that you want to allow a non-linear fit
+# Do a loop to get all the predictions for the whole list of dataframes
+
 
 
 # --------
