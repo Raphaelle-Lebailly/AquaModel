@@ -195,11 +195,12 @@ GetCombinedDf <- function(final, sp, base){
     sp <- sp[-pos,]
   }
   p <- which(!is.na(s_sp)) # select only non NA data
-  final$species <- NA # Create new species column
+  final$species <- NA ; final$PA <- NA # Create new species column
   index <- tapply(1:length(s_env), s_env, function(x){return(x)})
   rn <- index[as.character(s_sp[p])]
   # Get final dataframe
   final$species[rn] <- sp$species[p]
+  final$PA[rn] <- sp$PA[p]
   return(final)
 }
 
