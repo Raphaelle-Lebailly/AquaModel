@@ -16,9 +16,10 @@ source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Allows to acces
 
 aquaspecies_df <- read_rds("aquaspecies_df.rds") # Species for SDM 
 bg_df <- read_rds("background_data_clean.rds") # Background species data 
-sp_per_count <- read_rds("species_per_country.rds")
-aquasp_per_count <- read_rds("presence_sp_per_count.rds")
-spbg_per_count <- read_rds("background_per_country.rds")
+sp_per_count <- read_rds("species_per_country.rds") # List of aquaculture species per country
+spbg_per_count <- read_rds("background_per_country.rds") # List of background species per country
+aquasp_per_count <- read_rds("presence_sp_per_count.rds") # Matrix presence of species per
+
 
 
 
