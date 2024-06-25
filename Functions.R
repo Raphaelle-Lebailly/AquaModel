@@ -206,25 +206,26 @@ GetCombinedDf <- function(final, sp, base){
 
 
 ### Get the dataframe to generate the model ---------------------------------
-GetModelData <- function(pseudoabs, pres, nb){
-  # Rename df and delete NA rows
-  df1 <- na.omit(pseudoabs)
-  df2 <- na.omit(pres)
-  # Add Presence/Absence column
-  df1$PA <- 0
-  df2$PA <- 1
-  # Select only the species with 20>= occurrences
-  df3 <- df2 %>%
-    group_by(species) %>%
-    tidyterra::filter(n() >= nb) %>% # Chose nb of occurrences depending on the 
-    ungroup()
-  # Merge dataframes
-  species_list <- split(df3, df3$species)
-  list_df <- lapply(species_list, function(df) {
-    rbind(df, df1)
-  })
-  return(list_df)
-}
+# OBSOLETE
+# GetModelData <- function(pseudoabs, pres, nb){
+#   # Rename df and delete NA rows
+#   df1 <- na.omit(pseudoabs)
+#   df2 <- na.omit(pres)
+#   # Add Presence/Absence column
+#   df1$PA <- 0
+#   df2$PA <- 1
+#   # Select only the species with 20>= occurrences
+#   df3 <- df2 %>%
+#     group_by(species) %>%
+#     tidyterra::filter(n() >= nb) %>% # Chose nb of occurrences depending on the 
+#     ungroup()
+#   # Merge dataframes
+#   species_list <- split(df3, df3$species)
+#   list_df <- lapply(species_list, function(df) {
+#     rbind(df, df1)
+#   })
+#   return(list_df)
+# }
 
 
 # Get the cropped raster given the targeted area --------------------------
