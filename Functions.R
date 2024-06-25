@@ -105,7 +105,6 @@ GetMap <- function(layer, ISO){ # borders = ISOCODE => importer le spatvector en
 # coordinateUncertaintyInMeters, institutionCode, basisOfRecord
 # Don't think we recquire them for the moment, add conditions later if that's the case. 
 # Sometimes, the data object is NULL, add a condition so that it does not count 
-
 GetClean <- function(sp, raw){
   # Data
   #sp.data <- sp$data
@@ -155,7 +154,6 @@ GetFlags <- function(datadf) {
 }
 
 ### Get species dataframe ------------------------------------------------------
-
 GetSpDf <- function(dataGBIF){
   df_list <- list()
   for(i in 1:length(dataGBIF)){
@@ -181,7 +179,7 @@ GetSpDf <- function(dataGBIF){
   final_df <- do.call(rbind, df_list)
   final_df <- distinct(final_df) # To make sure to delete the redundant rows
   return(final_df)
-} # Takes a lot of time to run (size data and loop)
+} # Takes a lot of time to run (size data and loop), one time thing
 
 
 ### Add species name in final dataframe ----------------------------------
@@ -204,8 +202,6 @@ GetCombinedDf <- function(final, sp, base){
   final$species[rn] <- sp$species[p]
   return(final)
 }
-
-
 
 
 ### Get the dataframe to generate the model ---------------------------------
@@ -242,97 +238,18 @@ GetCroppedRaster <- function(list_raster, extent){
   for (i in seq_along(list_raster)) {
     rast_ext[[i]] <- crop(list_raster[[i]], reg_ext)
   }
+
   return(rast_ext)
+  
+  # VERSION APPLY DU CI DESSUS
+  # lapply(X = list_raster, FUN = function(x){
+  #   crop(x, reg_ext)
+  # })
+  
 }
 
 
 
-# ------------------------------------------------------------------------------------
-# countries (vector list names english) 
-get_sp_country<-function(country, df){ 
-  region <- world_vect[world_vect$name == country, ]
-  e <- ext(region)
-  rn=which(df$x >= e$xmin & df$x <= e$xmax & df$y>=e$ymin & df$y <=e$ymax)
-  if(length(rn)>0)
-  {
-    u=unique(df$species[rn])
-  return(u)
-  }else{
-    return("")
-  }
-}
-
-# t=list()
-# cnt=0
-# for(i in regions){
-#   cnt=cnt+1
-#   print(cnt)
-#   t[[i]] <- get_sp_country(i, aquaspecies_df)
-#   
-# }
-
-# For the background data
-# t3=list()
-# cnt=0
-# for(i in regions){
-#   cnt=cnt+1
-#   print(cnt)
-#   t3[[i]] <- get_sp_country(i, bg_df)
-# }
-# saveRDS(t3,"background_per_country.rds")
-
-# setwd("C:/Users/User/Desktop/Internship/Data")
-# saveRDS(t,"species_per_country.rds") ### SAVE OBJECT
-
-# Get background species for all the patches we target
-# Not sure why this function is useful
-get_bg <-function(countries, df){
-  u_comb=NULL
-  for(i in countries){
-    region <- world_vect[world_vect$name == countries[i], ]
-    e <- ext(region)
-    rn=which(df$x >= e$xmin & df$x <= e$xmax & df$y>=e$ymin & df$y <=e$ymax)
-    if(length(rn)>0){
-    u_comb=rbind(df[rn,])
-    }
-  }
-  return(u_comb)
-}
-
-# t2 <- list()
-# cnt=0
-# for(i in regions){
-#   cnt=cnt+1
-#   print(cnt)
-#   t2[[i]] <- get_bg(i, bg_df)
-# }
-
-# t2 <- do.call(get_bg, list(regions, bg_df), quote = TRUE )
-# saveRDS(t2,"background_per_country.rds")
-
-
-
-#--------------------------
-# 
-
-## Built species per country presence dataframe
-u=unique(aquaspecies_df$species) # List of all of the species names
-
-rn_sp=tapply(1:length(u),u,function(x){return(x)})
-
-df_spc=matrix(0,nrow=length(unique(aquaspecies_df$species)),ncol=length(regions))
-rownames(df_spc)=u
-colnames(df_spc)=regions
-for(i in 1:length(regions)){
-  df_spc[rn_sp[t[[i]]],i]=1
-}
-# saveRDS(df_spc,"presence_sp_per_count.rds")
-# df_spc is the dataframe of presences of species per country
-
-
-
-### Render countries where species are observed and add pseudoabsences
-# Modify get sub bg function
 
 ### Get subset of background data -------------------------------------------
 # First function to get the background species given an extent
@@ -355,7 +272,81 @@ GetSubBg <-function(bg_df, extent){
   return(sub_bg)
 } 
 
-#Get background data per country
+
+#### ADVANCED METHOD ------------------------------------------------------------------------
+
+#### Get species organisation ####
+#### Get a list of species names per country (one time thing) 
+GetSpCount<-function(country, df){ 
+  region <- world_vect[world_vect$name == country, ]
+  e <- ext(region)
+  rn=which(df$x >= e$xmin & df$x <= e$xmax & df$y>=e$ymin & df$y <=e$ymax)
+  if(length(rn)>0)
+  {
+    u=unique(df$species[rn])
+  return(u)
+  }else{
+    return("")
+  }
+}
+
+## For the aquaculture species (aquaspecies_df)
+# t=list()
+# cnt=0
+# for(i in regions){
+#   cnt=cnt+1
+#   print(cnt)
+#   t[[i]] <- get_sp_country(i, aquaspecies_df)
+#   
+# }
+## Save the object
+# setwd("C:/Users/User/Desktop/Internship/Data")
+# saveRDS(t,"species_per_country.rds")
+
+
+### Same for background species data
+GetBg <-function(countries, df){
+  u_comb=NULL
+  for(i in countries){
+    region <- world_vect[world_vect$name == countries[i], ]
+    e <- ext(region)
+    rn=which(df$x >= e$xmin & df$x <= e$xmax & df$y>=e$ymin & df$y <=e$ymax)
+    if(length(rn)>0){
+    u_comb=rbind(df[rn,])
+    }
+  }
+  return(u_comb)
+}
+
+# t2 <- list()
+# cnt=0
+# for(i in regions){
+#   cnt=cnt+1
+#   print(cnt)
+#   t2[[i]] <- get_bg(i, bg_df)
+# }
+# t2 <- do.call(get_bg, list(regions, bg_df), quote = TRUE )
+# saveRDS(t2,"background_per_country.rds")
+
+
+### Matrix of presence/absence of species per country 
+u=unique(aquaspecies_df$species) # List of all of the species names
+rn_sp=tapply(1:length(u),u,function(x){return(x)})
+df_spc=matrix(0,nrow=length(unique(aquaspecies_df$species)),ncol=length(regions))
+rownames(df_spc)=u
+colnames(df_spc)=regions
+for(i in 1:length(regions)){
+  df_spc[rn_sp[t[[i]]],i]=1
+}
+# saveRDS(df_spc,"presence_sp_per_count.rds")
+# df_spc is the dataframe of presences of species per country
+
+
+
+### Render countries where species are observed and add pseudoabsences
+# Modify get sub bg function
+
+#### Get background data per country ####
 GetSubBg_count <-function(bg_df, extent){
   # Get extent
   name_reg <- paste0(extent)
@@ -443,3 +434,22 @@ GetMerged <- function(df_list, group_size = 10) {
   
   return(final_merged)
 }
+
+
+
+
+# Get background data -----------------------------------------------------
+# Sample the background species according to a target species (for aquaculture in the future SDM)
+sample_background <- function(bg_df,  
+                              sp){
+  
+  # Extract countries where targeted species occur
+  countries_filtered <- bg_df$country[bg_df$species == sp]
+  
+  # Filter SP background
+  df.temp <- bg_df[bg_df$species != sp & countries_filtered %in% countries_filtered,]  
+  row.temp <- sample(x = 1:nrow(df.temp), size = 10000, replace = F)  # random coordinates sample, size 10,000
+  
+  return(sub_df = df.temp[row.temp,])
+}
+
