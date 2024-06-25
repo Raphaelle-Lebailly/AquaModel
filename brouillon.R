@@ -81,7 +81,7 @@ BASE <- env_var[[1]] # Gross grid (aquatic raster)
 
 # Data management ---------------------------------------------------------
 
-### ENVIRONMENTAL DATA
+### ENVIRONMENTAL DATA ###
 
 # Here, we decide arbitrarily to target India in order to have an interesting example
 COUNTRY <- 'India'
@@ -108,7 +108,7 @@ env_mg <- GetMerged(df_list = env_df, group_size = length(env_df))
 rm(env_df) ; gc()
 
 
-# SPECIES DATA
+### SPECIES DATA ###
 
 # Test map
 # Current geometry from rnaturalearth package but multiple issues to map the data
@@ -162,8 +162,20 @@ subsp <- aq_df2 %>% # Filter by targeted species name AND country
 spbg$PA <- 0 # Add presence absence column
 subsp$PA <- 1 
 
-# Merge the species dataframes
-dat <- rbind(subsp, spbg)
+# Merge the species dataframes (presence/absence df)
+spPA <- rbind(subsp, spbg)
+
+### MERGE ALL ###
+dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE)
+
+
+
+
+
+
+
+
+
 
 
 # Generate per species the equation
