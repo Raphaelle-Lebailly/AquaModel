@@ -116,7 +116,9 @@ rm(env_df) ; gc()
 # world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
 # plot(world2)
 
-# Add countries column in bg dataframe AND aquaspecies dataframe 
+
+
+# Add countries column in bg dataframe....
 bg_df2 <- bg_df
 rm(bg_df) ; gc() # Clean memory (CM)
 bg_df2 <- tidyterra::rename(bg_df2, lon = x, lat = y)
@@ -125,8 +127,16 @@ bg_df2 <- add_country_names(bg_df2)
 bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
 bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 
-aq_df2 <- aquaspecies_df # For aquaculture species
-rm(aquaspecies_df) ; gc() # CM
+# Get the list of species per country > threshold (occurrences)
+OCC <- 5 # Set threshold number of minimal occurrences 
+subdf <- aquaspecies_df %>% # Get species occurrences for all countries (> threshold)
+  group_by(species) %>%
+  tidyterra::filter(n() >= OCC) %>% 
+  ungroup() # 348 sp for OCC = 5
+
+# ...AND aquaspecies dataframe 
+aq_df2 <- subdf # For aquaculture species
+rm(aquaspecies_df, subdf) ; gc() # CM
 aq_df2 <- tidyterra::rename(aq_df2, lon = x, lat = y)
 aq_df2 <- as.data.table(aq_df2)
 aq_df2 <- add_country_names(aq_df2)
@@ -141,9 +151,10 @@ SPECIES <-  "Anabas testudineus"
 # Get background species according to targeted species
 # TEST (generate this table later on in the SDM section)
 spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # MAYBE NEED TO CHANGE THE COLUMN NAMES BACK TO x AND y!!!!
-subsp <- aq_df2 %>% # Filter by targeted species name AND country 
-  tidyterra::filter(species == SPECIES, country == COUNTRY)
+subsp <- aq_df2 %>% # Filter by targeted country 
+  tidyterra::filter(country == COUNTRY)
 
+species_count <- unique(subsp$species)
 
 # Get a list of the countries where aquaculture species occur
 # get_countries <- function(data) {
@@ -175,9 +186,6 @@ dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE)
 
 
 
-
-
-
 # Generate per species the equation
 get_species_df <- function(speciesname, unique_sp) {
   # Sélectionner le subset pour l'espèce donnée dans aquaspecies_df
@@ -197,6 +205,7 @@ get_species_df <- function(speciesname, unique_sp) {
   
   return(df)
 }
+
 # PAS TOTALEMENT CORRECT CAR APPEL DES ESPECES BACKGROUND PAR NOM AU LIEU DE LOCATION
 # CE QUI VEUT DIRE APPEL DE TOUTES LES LOCALISATIONS OU LES ESPECES BACKGROUND SONT 
 # ET NON JUSTE CELLES D'INTERET (pays de l'espèce ciblee)
