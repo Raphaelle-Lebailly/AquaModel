@@ -2,7 +2,6 @@
 
 
 # Load data, packages and functions ---------------------------------------
-# library(SeaVal) # Add countries names according to coordinates
 
 setwd("C:/Users/User/Desktop/Internship/Data") # Download and load data (!!! LOCAL ADRESS)
 source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Load functions
@@ -24,7 +23,7 @@ sp_fb <- fb_tbl("species") %>%
 # Join species occurrences with aquaculture status
 bg_df <- bg_df %>% 
   left_join(sp_fb, by = "species")
-rm(sp_fb)
+rm(sp_fb) ; gc()
 # Retrieve species with non NA aquaculture status
 aquaspecies_df <- na.omit(bg_df)
 plot(aquaspecies_df$x, aquaspecies_df$y) # Check data repartition
@@ -71,13 +70,13 @@ bio_names <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", 
 names(bio) <- bio_names
 bio_list <- lapply(1:nlyr(bio), function(i) bio[[i]])
 env_var <- c(env_var, bio_list) # Add the extracted and renamed layers
-rm(bio_list)
+rm(bio_list, bio)
 gc()
 
 # World data (COMPLICATED SO ON HOLD FOR THE MOMENT)
-# world <- ne_countries(scale = "medium", returnclass = "sf")
-# world_vect <- vect(world)
-# regions <- world$name
+world <- ne_countries(scale = "medium", returnclass = "sf")
+world_vect <- vect(world)
+regions <- world$name
 
 # Set base object # Not cropping before!!
 # BASE <- env_var[[19]] # Fine grid (terrestrial raster)
@@ -117,7 +116,7 @@ env_rs <- list()
 for (i in seq_along(env_crop)) {
   env_rs[[i]] <- resample(env_crop[[i]], BASE, "bilinear") # OK
 }
-
+gc()
 # Convert into dataframe
 env_df <- list()
 for (i in seq_along(env_rs)) {
@@ -126,6 +125,23 @@ for (i in seq_along(env_rs)) {
 rm(env_crop, env_rs) ; gc()
 
 # Merge (+ cell ID)
+GetMerged <- function(df_list, group_size = 10) {
+  merged_list <- list()
+  num_groups <- ceiling(length(df_list) / group_size)
+  
+  for (i in seq_len(num_groups)) {
+    start_index <- (i - 1) * group_size + 1
+    end_index <- min(i * group_size, length(df_list))
+    group <- df_list[start_index:end_index]
+    merged_group <- reduce(group, ~ full_join(.x, .y, by = c("x", "y")))
+    merged_list[[i]] <- merged_group
+  }
+  
+  # Fusionner tous les groupes ensemble
+  final_merged <- reduce(merged_list, ~ full_join(.x, .y, by = c("x", "y")))
+  
+  return(final_merged)
+}
 env_mg <- GetMerged(df_list = env_df, group_size = length(env_df))
 rm(env_df) ; gc()
 
@@ -137,94 +153,75 @@ rm(env_df) ; gc()
 # See if there are pb also with cropping per country the data (missing data that are not inlands)
 # world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
 # plot(world2)
-
-library(rworldmap)
-library(sp)
-library(sf)
-
-
-
-# sTILL NO FRANCE
-
-
-
-
+library(SeaVal) # Add countries names according to coordinates
 
 # Add countries column in full bg dataframe....
-bg_df2 <- bg_df
-# rm(bg_df) ; gc() # Clean memory (CM)
-bg_df2 <- tidyterra::rename(bg_df2, lon = x, lat = y)
-
-# world <- ne_countries(scale = "medium", returnclass = "sf") # Problematic (missing values) (rnaturalearth)
-# bg_df2 <- as.data.table(bg_df2)
-# bg_df2 <- add_country_names(bg_df2, regions = world) # With SeaVal package
-# bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
-
-world <- getMap(resolution = "high") # Load world data (rworldmap)
-
-coordinates(bg_df2) <- ~ lon + lat
-proj4string(bg_df2) <- proj4string(world)
-countries <- over(bg_df2, world) # Geoloc inverse
-bg_df2 <- as.data.frame(bg_df2)
-bg_df2$country <- countries$ADMIN
-
-
+bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
+world <- ne_countries(scale = "medium", returnclass = "sf") # Problematic (missing values) (rnaturalearth)
+bg_df2 <- as.data.table(bg_df2)
+bg_df2 <- add_country_names(bg_df2, regions = world) # With SeaVal package
+bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
 bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+# rm(bg_df) ; gc() # Clean memory (CM)
 
-# Get the list of species per country > threshold (occurrences)
-OCC <- 5 # Set threshold number of minimal occurrences 
-subdf <- aquaspecies_df %>% # Get species occurrences for all countries (> threshold)
-  group_by(species) %>%
-  tidyterra::filter(n() >= OCC) %>% 
-  ungroup() # 348 sp for OCC = 5
-subdf <- droplevels(subdf)
-species_counts <- table(aquaspecies_df$species)
-species_above_threshold <- names(species_counts[species_counts >= OCC])
-subdf <- aquaspecies_df[aquaspecies_df$species %in% species_above_threshold, ]
-
-occurences <- table(subdf$species)
-print(occurences)
-occurences<-table(unlist(subdf$species)) # Check occurences
-occurences # OK
+# OTHER METHOD (does not work yet)
+# world2 <- getMap(resolution = "high") # Load world data (rworldmap)
+# coordinates(bg_df2) <- ~ lon + lat
+# proj4string(bg_df2) <- proj4string(world)
+# countries <- over(bg_df2, world) # Geoloc inverse
+# bg_df2 <- as.data.frame(bg_df2)
+# bg_df2$country <- countries$ADMIN
+# bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 
 # ...AND aquaspecies dataframe 
-aq_df2 <- subdf # For aquaculture species
-# rm(aquaspecies_df, subdf) ; gc() # CM
-aq_df2 <- tidyterra::rename(aq_df2, lon = x, lat = y)
+# Get the list of species per country > threshold (occurrences)
+# OCC <- 5 # Set threshold number of minimal occurrences 
+# subdf_thrsh <- aquaspecies_df %>% # Get species occurrences for all countries (> threshold)
+#   group_by(species) %>%
+#   tidyterra::filter(n() >= OCC) %>% 
+#   ungroup() # 348 sp for OCC = 5
+# subdf_thrsh <- droplevels(subdf_thrsh)
+
+# species_counts <- table(aquaspecies_df$species) # Useless??
+# species_above_threshold <- names(species_counts[species_counts >= OCC])
+# subdf_thrsh <- aquaspecies_df[aquaspecies_df$species %in% species_above_threshold, ]
+
+# Add countries
+aq_df2 <- tidyterra::rename(aquaspecies_df, lon = x, lat = y)
 aq_df2 <- as.data.table(aq_df2)
 aq_df2 <- add_country_names(aq_df2)
 aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
 aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+# rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
 
 
-### Tenter autrement la geolocalisation inverse
-library(sp)
-library(rnaturalearth)
-library(rnaturalearthdata)
-library(dplyr)
+# Select subset of the targeted country for aquaculture species
 
+# Filter to target
+# Aquaculture species
+subsp_count <- aq_df2 %>% # Filter by targeted country 
+  tidyterra::filter(country == COUNTRY)
 
-
-
-
-
-COUNTRY <- "France"
-subsp <- aq_df2[aq_df2$country == COUNTRY, ]
-# Vérifier les occurrences après filtrage par pays
-occurences2 <- table(subsp$species)
-print(occurences2)
+OCC <- 5 # Set threshold number of minimal occurrences 
+aq_df_count <- subsp_count %>% # Get species occurrences for all countries (> threshold)
+  group_by(species) %>%
+  tidyterra::filter(n() >= OCC) %>% 
+  ungroup()
+occurences2 <- table(aq_df_count$species) # Check if threshold respected
+print(occurences2) # OK
 
 # Set target species (later on, vector of species found in the targeted area )
-# SPECIES <-  "Anabas testudineus"
+SPECIES <-  "Anabas testudineus"
+plot(aq_df_count$x, aq_df_count$y)
+
+# Get Country extent
+name_reg <- paste0(COUNTRY)
+region <- world_vect[world_vect$name == name_reg, ]
+reg_ext <- ext(region)
+reg_ext
 
 # Get background species according to targeted species
-subsp <- aq_df2 %>% # Get aquaculture species according to country
-  tidyterra::filter(country == COUNTRY)
-occurences2 <-table(unlist(subsp$species)) # Check occurences
-occurences2 # NOT OK!!!
-species_count <- unique(subsp$species) # Retrieve species names
-
-# spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
+spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
 
 
 
