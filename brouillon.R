@@ -2,14 +2,36 @@
 
 
 # Load data, packages and functions ---------------------------------------
-library(SeaVal) # Add countries names according to coordinates
+# library(SeaVal) # Add countries names according to coordinates
 
 setwd("C:/Users/User/Desktop/Internship/Data") # Download and load data (!!! LOCAL ADRESS)
 source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Load functions
 
-# Species data
-aquaspecies_df <- read_rds("aquaspecies_df.rds")
-bg_df <- read_rds("background_data_clean.rds")
+### SPECIES DATA ###
+bg_df <- read_rds("real_bg.rds") # All GBIF data (14,757 species)
+plot(bg_df$x, bg_df$y)
+
+# Access rfishbase data to retrieve fishbase aquaculture species names
+library(rfishbase)
+status <- c('commercial', 'experimental', 'likely future use') # Change if we want different status
+sp_fb <- fb_tbl("species") %>% 
+  mutate(species = paste(Genus, Species)) %>% 
+  select(species, UsedforAquaculture) %>% 
+  tidyterra::filter(UsedforAquaculture %in% status) %>% 
+  tidyterra::rename(Aquaculture_status = UsedforAquaculture)
+# 449 species names for different aquaculture status
+
+# Join species occurrences with aquaculture status
+bg_df <- bg_df %>% 
+  left_join(sp_fb, by = "species")
+rm(sp_fb)
+# Retrieve species with non NA aquaculture status
+aquaspecies_df <- na.omit(bg_df)
+plot(aquaspecies_df$x, aquaspecies_df$y) # Check data repartition
+
+# We mostly have data in western and central Africa and eastern North America
+
+
 
 # Visualize the data in the world (plot)
 # data("World")
@@ -24,7 +46,7 @@ bg_df <- read_rds("background_data_clean.rds")
 # img
 
 
-# Environmental data
+### ENVIRONMENTAL DATA ###
 ## Download
 pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
 path_bio <- paste0(pathbio,"/wc2.1_30s_bio") # Make a loop in the future for the different files
@@ -53,9 +75,9 @@ rm(bio_list)
 gc()
 
 # World data (COMPLICATED SO ON HOLD FOR THE MOMENT)
-world <- ne_countries(scale = "medium", returnclass = "sf")
-world_vect <- vect(world)
-regions <- world$name
+# world <- ne_countries(scale = "medium", returnclass = "sf")
+# world_vect <- vect(world)
+# regions <- world$name
 
 # Set base object # Not cropping before!!
 # BASE <- env_var[[19]] # Fine grid (terrestrial raster)
@@ -116,15 +138,37 @@ rm(env_df) ; gc()
 # world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
 # plot(world2)
 
+library(rworldmap)
+library(sp)
+library(sf)
 
 
-# Add countries column in bg dataframe....
+
+# sTILL NO FRANCE
+
+
+
+
+
+# Add countries column in full bg dataframe....
 bg_df2 <- bg_df
-rm(bg_df) ; gc() # Clean memory (CM)
+# rm(bg_df) ; gc() # Clean memory (CM)
 bg_df2 <- tidyterra::rename(bg_df2, lon = x, lat = y)
-bg_df2 <- as.data.table(bg_df2)
-bg_df2 <- add_country_names(bg_df2)
-bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
+
+# world <- ne_countries(scale = "medium", returnclass = "sf") # Problematic (missing values) (rnaturalearth)
+# bg_df2 <- as.data.table(bg_df2)
+# bg_df2 <- add_country_names(bg_df2, regions = world) # With SeaVal package
+# bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
+
+world <- getMap(resolution = "high") # Load world data (rworldmap)
+
+coordinates(bg_df2) <- ~ lon + lat
+proj4string(bg_df2) <- proj4string(world)
+countries <- over(bg_df2, world) # Geoloc inverse
+bg_df2 <- as.data.frame(bg_df2)
+bg_df2$country <- countries$ADMIN
+
+
 bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 
 # Get the list of species per country > threshold (occurrences)
@@ -133,10 +177,19 @@ subdf <- aquaspecies_df %>% # Get species occurrences for all countries (> thres
   group_by(species) %>%
   tidyterra::filter(n() >= OCC) %>% 
   ungroup() # 348 sp for OCC = 5
+subdf <- droplevels(subdf)
+species_counts <- table(aquaspecies_df$species)
+species_above_threshold <- names(species_counts[species_counts >= OCC])
+subdf <- aquaspecies_df[aquaspecies_df$species %in% species_above_threshold, ]
+
+occurences <- table(subdf$species)
+print(occurences)
+occurences<-table(unlist(subdf$species)) # Check occurences
+occurences # OK
 
 # ...AND aquaspecies dataframe 
 aq_df2 <- subdf # For aquaculture species
-rm(aquaspecies_df, subdf) ; gc() # CM
+# rm(aquaspecies_df, subdf) ; gc() # CM
 aq_df2 <- tidyterra::rename(aq_df2, lon = x, lat = y)
 aq_df2 <- as.data.table(aq_df2)
 aq_df2 <- add_country_names(aq_df2)
@@ -144,17 +197,36 @@ aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (su
 aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 
 
+### Tenter autrement la geolocalisation inverse
+library(sp)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(dplyr)
+
+
+
+
+
+
+COUNTRY <- "France"
+subsp <- aq_df2[aq_df2$country == COUNTRY, ]
+# Vérifier les occurrences après filtrage par pays
+occurences2 <- table(subsp$species)
+print(occurences2)
 
 # Set target species (later on, vector of species found in the targeted area )
-SPECIES <-  "Anabas testudineus"
+# SPECIES <-  "Anabas testudineus"
 
 # Get background species according to targeted species
-# TEST (generate this table later on in the SDM section)
-spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # MAYBE NEED TO CHANGE THE COLUMN NAMES BACK TO x AND y!!!!
-subsp <- aq_df2 %>% # Filter by targeted country 
+subsp <- aq_df2 %>% # Get aquaculture species according to country
   tidyterra::filter(country == COUNTRY)
+occurences2 <-table(unlist(subsp$species)) # Check occurences
+occurences2 # NOT OK!!!
+species_count <- unique(subsp$species) # Retrieve species names
 
-species_count <- unique(subsp$species)
+# spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
+
+
 
 # Get a list of the countries where aquaculture species occur
 # get_countries <- function(data) {
