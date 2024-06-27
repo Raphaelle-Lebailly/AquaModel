@@ -419,6 +419,7 @@ GetSubBg <-function(bg_df, extent){
 } 
 
 # Group fusion for big dataframes -----------------------------------------
+
 GetMerged <- function(df_list, group_size = 10) {
   merged_list <- list()
   num_groups <- ceiling(length(df_list) / group_size)
