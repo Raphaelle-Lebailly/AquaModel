@@ -216,4 +216,25 @@ Nguyen & Leung, 2022
 
 # List of things to do
 
-- Clean everything and make it more generalizable
+Raph: 
+- Look for freshwater environmental data. Lakes and rivers. 
+- *How to handle different water bodies* * --> 2 options. 1. differentiate the water bodies OR 2. apply filters. How to overlay environmental variable and physical structures (Lakes) 
+- Apply some sort of buffer to handle coastal species. Keep species occurrences from 22kms from the coast (~ 7 cells). Only for borders touching the sea and not the land.
+
+
+Maia:
+- What's done in aquaculture concerning lakes
+- Nutrition --> establish a scaling per fish and per nutrient
+
+Overall --> link / quantify fish with needs. 
+
+Ideas: 
+- Estimate areas where species can live > a threshold, count the nb of cells that represents and translate in terms of area covered. => 1rst step to estimate a "quantity" or "how much" a species can be grown in a country. 
+- 
+
+Keep in mind (project and report prospects)
+- The resolution influences the predictive performance of a SDM. The link isn't proportional, which highliths the presence of an optimum. Depends on the species. (Lowen, 2016)
+
+Questions:
+- What about GBIF data that covers 1873-2019 (with species data way more important in 1960's - 1980's)
+- How to quantify fish depending on needs and how geographic data is interesting to implement concretely?
