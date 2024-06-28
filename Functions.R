@@ -14,7 +14,7 @@ library(rlang)
 # Plot Maps
 library(plotly)
 library(maps)
-library(rnaturalearth)
+library(rnaturalearth) 
 library(rgbif) 
 library(ggplot2) 
 library(RColorBrewer) 
