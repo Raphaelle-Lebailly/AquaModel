@@ -1,4 +1,5 @@
 # Goal: implement the background data of all the countries containing the species of interest
+library(mgcv)
 
 
 # Load data, packages and functions ---------------------------------------
@@ -8,7 +9,7 @@ source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Load functions
 
 ### SPECIES DATA ###
 bg_df <- read_rds("real_bg.rds") # All GBIF data (14,757 species)
-plot(bg_df$x, bg_df$y)
+# plot(bg_df$x, bg_df$y)
 
 # Access rfishbase data to retrieve fishbase aquaculture species names
 library(rfishbase)
@@ -26,23 +27,30 @@ bg_df <- bg_df %>%
 rm(sp_fb) ; gc()
 # Retrieve species with non NA aquaculture status
 aquaspecies_df <- na.omit(bg_df)
-plot(aquaspecies_df$x, aquaspecies_df$y) # Check data repartition
+# plot(aquaspecies_df$x, aquaspecies_df$y) # Check data repartition
 
 # We mostly have data in western and central Africa and eastern North America
+
+# Import data borders and coastlines
+world <- ne_countries(scale = "medium", returnclass = "sf") # Borders of the countries
+world <- world[world$continent != "Antarctica", ] # Erase Antartica (issues with intersect function and useless)
+world_vect <- vect(world)
+regions <- world$name
+coastline <- ne_download(scale = "medium", type = "coastline", category = "physical", returnclass = "sf") # Get coastlines
+coastline_vect <- vect(coastline) # Convert to spatvector object
 
 
 
 # Visualize the data in the world (plot)
-# data("World")
-# img <- bg_df %>%
-#   tidyterra::filter(species == "Abramis brama") %>%
-#   ggplot(aes(x = x, y = y)) + 
-#   # geom_sf(world) +
-#   scale_fill_viridis_c() +
+# ggplot(data = world) +
+#   geom_sf(color = "black") +
+#   geom_sf(fill = "antiquewhite1") +
 #   theme_minimal() +
-#   theme(panel.background = element_rect(fill = 'light blue'))
-# x11()
-# img
+#   theme(panel.background = element_rect(fill = 'light blue'))+
+#   # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
+#   geom_point(data = aquaspecies_df, aes(x = x, y = y), size = 1,  # Put the dots from the species filtered subdataframe
+#              shape = 21, fill = "blue") +
+#   ggtitle(label = c("Species location points in the world"))
 
 
 ### ENVIRONMENTAL DATA ###
@@ -73,14 +81,44 @@ env_var <- c(env_var, bio_list) # Add the extracted and renamed layers
 rm(bio_list, bio)
 gc()
 
-# World data (COMPLICATED SO ON HOLD FOR THE MOMENT)
-world <- ne_countries(scale = "medium", returnclass = "sf")
-world_vect <- vect(world)
-regions <- world$name
+
+
+
+GetCroppedRaster <- function(list_raster, extent){
+  # Get extent
+  name_reg <- paste0(extent)
+  region <- world_vect[world_vect$name == name_reg, ]
+
+  # Draw polygon from coastline
+  intersect <- terra::intersect(coastline_vect, region)
+  
+  # Crop coastline in targeted area
+  crop <- crop(region, intersect)
+  
+  # Add a buffer everywhere following the border
+  buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+  
+  # Combine Geometries
+  combined <- terra::union(region, buffer)
+  
+    # Crop raster
+  rast_ext <- list()
+  for (i in seq_along(list_raster)) {
+    rast_ext[[i]] <- crop(list_raster[[i]], combined, mask = TRUE) # use mask to respect boundaries and not extent
+  }
+  
+  return(rast_ext)
+  
+  # VERSION APPLY DU CI DESSUS
+  # lapply(X = list_raster, FUN = function(x){
+  #   crop(x, reg_ext)
+  # })
+  
+}
 
 # Set base object # Not cropping before!!
 # BASE <- env_var[[19]] # Fine grid (terrestrial raster)
-BASE <- env_var[[1]] # Gross grid (aquatic raster)
+BASE <- env_var[[1]] # Coarser grid (aquatic raster)
 
 # List of species per country
 # sp_per_count <- readRDS('species_per_country.rds')
@@ -117,6 +155,7 @@ for (i in seq_along(env_crop)) {
   env_rs[[i]] <- resample(env_crop[[i]], BASE, "bilinear") # OK
 }
 gc()
+rm(env_crop)
 # Convert into dataframe
 env_df <- list()
 for (i in seq_along(env_rs)) {
@@ -199,31 +238,79 @@ aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordina
 
 # Filter to target
 # Aquaculture species
-subsp_count <- aq_df2 %>% # Filter by targeted country 
-  tidyterra::filter(country == COUNTRY)
+# USELESS TO FILTER BY COUNTRY: WE STUDY SPECIES IN ALL AREAS POSSIBLE AND NOT LIMITED BY ADMINISTRATIVE BORDERS
+# WE WANT TO FOCUS ON SPECIES PRESENT IN A COUNTRY OF INTEREST, NOTLIMIT THE AREA TO THE COUNTRY CONCERNING THE AREA OF DISTRIBUTION
+
+# subsp_count <- aq_df2 %>% # Filter by targeted country 
+  # tidyterra::filter(country == COUNTRY)
 
 OCC <- 5 # Set threshold number of minimal occurrences 
-aq_df_count <- subsp_count %>% # Get species occurrences for all countries (> threshold)
+aq_df_occ <- aq_df2 %>% # Get species occurrences for all countries (> threshold)
   group_by(species) %>%
   tidyterra::filter(n() >= OCC) %>% 
   ungroup()
-occurences2 <- table(aq_df_count$species) # Check if threshold respected
+rm(aq_df2) ; gc()
+occurences2 <- table(aq_df_occ$species) # Check if threshold respected
 print(occurences2) # OK
 
 # Set target species (later on, vector of species found in the targeted area )
-SPECIES <-  "Anabas testudineus"
-plot(aq_df_count$x, aq_df_count$y)
+#######################*
+#######################*
+# Add filter per country of interest to get the species list to generate the dataframes later on
 
-# Get Country extent
-name_reg <- paste0(COUNTRY)
-region <- world_vect[world_vect$name == name_reg, ]
-reg_ext <- ext(region)
-reg_ext
+#######################*
+#######################*
+
+
+SPECIES <-  "Anabas testudineus" # Here example of species present in India (we don't know where else it's present)
+aq_df_sp <- aq_df_occ %>% 
+  tidyterra::filter(species == SPECIES) # Filter only the species of interest
+
+plot(aq_df_sp$x, aq_df_sp$y, main = SPECIES) # Plot the points
+
+# Visualize the points of the targeted species in India
+ggplot(data = world) +
+  geom_sf(color = "black") +
+  geom_sf(fill = "antiquewhite1") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'light blue'))+
+  coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
+  geom_point(data = aq_df_sp, aes(x = x, y = y), size = 2,  # Put the dots from the species filtered subdataframe
+             shape = 21, fill = "green") 
+
+# Looks very much in the country so does not make sense that I'm missing the data in the final dataframe... pb of matching?
+# Only 5 points appear out of 9.
+
+# In the world
+ggplot(data = world) +
+  geom_sf(color = "black") +
+  geom_sf(fill = "antiquewhite1") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'light blue'))+
+  # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
+  geom_point(data = aq_df_occ, aes(x = x, y = y), size = 1,  # Put the dots from the species filtered subdataframe
+             shape = 21, fill = "red") +
+  ggtitle(label = c("Species location points in the world (occurrence > 5)"))
+
 
 # Get background species according to targeted species
+sample_background <- function(bg_df, sp){ # Modify conditions about including NAs countries. Add the buffer. 
+  
+  # Extract countries where targeted species occur
+  countries_filtered <- bg_df$country[bg_df$species == sp]
+  
+  # Filter SP background
+  df.temp <- bg_df[bg_df$species != sp & countries_filtered %in% countries_filtered,]  
+  row.temp <- sample(x = 1:nrow(df.temp), size = 10000, replace = F)  # random coordinates sample, size 10,000
+  
+  return(sub_df = df.temp[row.temp,])
+}
 spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
 
+plot(spbg$x, spbg$y, main = c("Background points for ", SPECIES)) # DOES NOT WORK (probably because of the NA problem and selection of the countries)
 
+# Logically, supposed to be in the same area than the species of interest because is a sample of background
+# species in the area of distribution of the species of interest
 
 # Get a list of the countries where aquaculture species occur
 # get_countries <- function(data) {
@@ -240,68 +327,81 @@ spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of
 
 # Prepare data
 spbg$PA <- 0 # Add presence absence column
-subsp$PA <- 1 
+aq_df_sp$PA <- 1 
 
 # Merge the species dataframes (presence/absence df)
-spPA <- rbind(subsp, spbg)
+spPA <- rbind(aq_df_sp, spbg)
+
+# Visualize (check where are the dots compared to the species of interest)
+ggplot(data = world) +
+  geom_sf(color = "black") +
+  geom_sf(fill = "antiquewhite1") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'light blue'))+
+  # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
+  geom_point(data = spPA, aes(x = x, y = y, fill = factor(PA)), size = 3,  # Utilisez factor(PA) pour traiter PA comme une catégorie
+             shape = 21) +
+  scale_fill_manual( name = "Presence/Absence", values = c("0" = "red", "1" = "green")) + 
+  ggtitle(label = c("Species background location points in the area of distribution of the target species")) +
+  theme(legend.title = element_text(size = 9), title = element_text(size = 10))
+
+
+
 
 ### MERGE ALL ###
-dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE)
+dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE) # Add country 
+# We add the species data 
+# Only 1 data for 
 
 
-
-
-
-
-
-
+# Plus l'impression que tout ca soit utile
 # Generate per species the equation
-get_species_df <- function(speciesname, unique_sp) {
-  # Sélectionner le subset pour l'espèce donnée dans aquaspecies_df
-  sub_sp <- aquaspecies_df %>%
-    tidyterra::filter(species == speciesname)
-  
-  # Sélectionner le subset pour les espèces associées dans unique_sp
-  species_list <- unique_sp[[speciesname]]
-  sub_sp_bg <- bg_df %>%
-    tidyterra::filter(species %in% species_list & species != speciesname)
-  
-  # Combinaison des deux subsets
-  df <- bind_rows(sub_sp, sub_sp_bg)
-  
-  # Supprimer les doublons
-  df <- distinct(df)
-  
-  return(df)
-}
+# get_species_df <- function(speciesname, unique_sp) {
+#   # Sélectionner le subset pour l'espèce donnée dans aquaspecies_df
+#   sub_sp <- aquaspecies_df %>%
+#     tidyterra::filter(species == speciesname)
+#   
+#   # Sélectionner le subset pour les espèces associées dans unique_sp
+#   species_list <- unique_sp[[speciesname]]
+#   sub_sp_bg <- bg_df %>%
+#     tidyterra::filter(species %in% species_list & species != speciesname)
+#   
+#   # Combinaison des deux subsets
+#   df <- bind_rows(sub_sp, sub_sp_bg)
+#   
+#   # Supprimer les doublons
+#   df <- distinct(df)
+#   
+#   return(df)
+# }
 
 # PAS TOTALEMENT CORRECT CAR APPEL DES ESPECES BACKGROUND PAR NOM AU LIEU DE LOCATION
 # CE QUI VEUT DIRE APPEL DE TOUTES LES LOCALISATIONS OU LES ESPECES BACKGROUND SONT 
 # ET NON JUSTE CELLES D'INTERET (pays de l'espèce ciblee)
 
 # Test
-sp_comb_df <- get_species_df('Abramis brama', unique_species) # OK
+# sp_comb_df <- get_species_df(SPECIES, unique_species) # OK
 
 # Call this function in a loop for species dataframes
 
 
 # Get environmental data for areas targeted
-get_crop_env <- function(species_names, count_per_sp){
-  for(i in seq_along(species_names)){
-    count <- count_per_sp[[species_names[i]]]
-  }
-  for(i in seq_along(count)){
-    name_reg <- paste0(i)
-    region <- world_vect[world_vect$name == name_reg, ]
-    reg_ext <- ext(region)
-    rast_ext <- list()
-    for (i in seq_along(list_raster)) {
-      rast_ext[[i]] <- crop(list_raster[[i]], reg_ext)
-    }
-  }
-  return(rast_ext)
-}
-
+# get_crop_env <- function(species_names, count_per_sp){
+#   for(i in seq_along(species_names)){
+#     count <- count_per_sp[[species_names[i]]]
+#   }
+#   for(i in seq_along(count)){
+#     name_reg <- paste0(i)
+#     region <- world_vect[world_vect$name == name_reg, ]
+#     reg_ext <- ext(region)
+#     rast_ext <- list()
+#     for (i in seq_along(list_raster)) {
+#       rast_ext[[i]] <- crop(list_raster[[i]], reg_ext)
+#     }
+#   }
+#   return(rast_ext)
+# }
+# 
 
 
 
@@ -337,7 +437,7 @@ for (i in seq_along(dat)) {
   sdm_obj[[i]] <- sim_func(names_x1,name_y, dat[[i]])
 }
 
-sdm_obj2=sim_func(names_x1,name_y, dat[[1]]) # get back the sdm object
+sdm_obj2=sim_func(names_x1,name_y, dat) # get back the sdm object
 # Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
 Newdat <- env_mg
 # Loop for predictions

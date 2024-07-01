@@ -217,6 +217,7 @@ Nguyen & Leung, 2022
 # List of things to do
 
 Raph: 
+- 
 - Look for freshwater environmental data. Lakes and rivers. 
 - *How to handle different water bodies* * --> 2 options. 1. differentiate the water bodies OR 2. apply filters. How to overlay environmental variable and physical structures (Lakes) 
 - Apply some sort of buffer to handle coastal species. Keep species occurrences from 22kms from the coast (~ 7 cells). Only for borders touching the sea and not the land.
@@ -234,7 +235,71 @@ Ideas:
 
 Keep in mind (project and report prospects)
 - The resolution influences the predictive performance of a SDM. The link isn't proportional, which highliths the presence of an optimum. Depends on the species. (Lowen, 2016)
+- Definition of pseudoabsences and why they are useful. 1. Assess a better model with more accurate coefficients (look into details to be sure) 2. Assess the differences of sampling effort over all area of distribution. 
 
 Questions:
 - What about GBIF data that covers 1873-2019 (with species data way more important in 1960's - 1980's)
 - How to quantify fish depending on needs and how geographic data is interesting to implement concretely?
+
+
+
+![alt text](image.png)
+
+
+# Get coastal data
+
+```{r}
+# Installer et charger les packages nécessaires
+install.packages("rnaturalearth")
+install.packages("sf")
+install.packages("terra")
+install.packages("dplyr")
+
+library(rnaturalearth)
+library(sf)
+library(terra)
+library(dplyr)
+
+# Télécharger les données des pays et des côtes
+world <- ne_countries(scale = "medium", returnclass = "sf")
+coastline <- ne_download(scale = "medium", type = "coastline", category = "physical", returnclass = "sf")
+
+# Convertir en SpatVecteur de terra
+world_vect <- vect(world)
+coastline_vect <- vect(coastline)
+
+# Convertir en sf pour les opérations géospatiales
+world <- st_as_sf(world)
+coastline <- st_as_sf(coastline)
+
+# Créer un buffer autour des côtes pour capturer les frontières côtières
+coastline_buffer <- st_buffer(coastline, dist = 0.01)
+
+# Intersecter les pays avec le buffer des côtes pour obtenir les frontières côtières
+coastal_boundaries <- st_intersection(world, coastline_buffer)
+
+# Extraire les frontières terrestres en soustrayant les frontières côtières des frontières totales
+land_boundaries <- st_difference(world, coastline_buffer)
+
+# Convertir les résultats en SpatVecteur de terra
+coastal_boundaries_vect <- vect(coastal_boundaries)
+land_boundaries_vect <- vect(land_boundaries)
+
+# Visualiser les pays avec leurs frontières côtières et terrestres
+plot(world_vect, col = "gray")
+lines(coastal_boundaries_vect, col = "blue", lwd = 2)
+lines(land_boundaries_vect, col = "green", lwd = 2)
+
+# Appliquer un buffer uniquement aux frontières côtières
+coastal_buffer <- st_buffer(coastal_boundaries, dist = 0.01)
+coastal_buffer_vect <- vect(coastal_buffer)
+
+# Visualiser le buffer appliqué aux frontières côtières
+plot(world_vect, col = "gray")
+lines(coastal_boundaries_vect, col = "blue", lwd = 2)
+lines(land_boundaries_vect, col = "green", lwd = 2)
+plot(coastal_buffer_vect, col = "red", add = TRUE, alpha = 0.5)
+
+# coastal_buffer_vect est maintenant un SpatVecteur avec le buffer appliqué aux frontières côtières
+
+```

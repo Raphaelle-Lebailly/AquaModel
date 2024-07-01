@@ -183,24 +183,62 @@ GetSpDf <- function(dataGBIF){
 
 
 ### Add species name in final dataframe ----------------------------------
-GetCombinedDf <- function(final, sp, base){
+# GetCombinedDf <- function(final, sp, base){
+#   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
+#   s_sp <- cellFromXY(base, xy = coord) 
+#   coord2 <- matrix(c(final$x, final$y), ncol = 2) # Coordinates from env df
+#   s_env <- cellFromXY(base, xy = coord2)
+#   # Target missmatches between the two dataframes
+#   pos <- which(! s_sp %in% s_env) # Check if there are still data outside range 
+#   if(length(pos)>0) {
+#     s_sp <- s_sp[-pos] 
+#     sp <- sp[-pos,]
+#   }
+#   p <- which(!is.na(s_sp)) # select only non NA data
+#   final$species <- NA ; final$PA <- NA # Create new species column
+#   index <- tapply(1:length(s_env), s_env, function(x){return(x)})
+#   rn <- index[as.character(s_sp[p])]
+#   # Get final dataframe
+#   final$species[rn] <- sp$species[p] # Add species column
+#   final$PA[rn] <- sp$PA[p] # Add presence/absence column
+#   
+#   # final$country[rn] <- sp$country[p] # Add country column
+#   # final$Aquaculture_status[rn] <- sp$Aquaculture_status[p] # Add aquaculture status column
+#   return(final)
+# }
+
+GetCombinedDf <- function(final, sp, base) {
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
   s_sp <- cellFromXY(base, xy = coord) 
   coord2 <- matrix(c(final$x, final$y), ncol = 2) # Coordinates from env df
   s_env <- cellFromXY(base, xy = coord2)
-  # Target missmatches between the two dataframes
-  pos <- which(! s_sp %in% s_env) # Check if there are still data outside range 
-  if(length(pos)>0) {
+  
+  # Target mismatches between the two dataframes
+  pos <- which(!s_sp %in% s_env) # Check if there are still data outside range 
+  if(length(pos) > 0) {
     s_sp <- s_sp[-pos] 
     sp <- sp[-pos,]
   }
-  p <- which(!is.na(s_sp)) # select only non NA data
-  final$species <- NA ; final$PA <- NA # Create new species column
-  index <- tapply(1:length(s_env), s_env, function(x){return(x)})
+  
+  p <- which(!is.na(s_sp)) # Select only non NA data
+  final$species <- NA
+  final$PA <- NA
+  final$country <- NA
+  final$Aquaculture_status <- NA # Create new columns in final dataframe
+  
+  index <- tapply(1:length(s_env), s_env, function(x) {return(x)})
   rn <- index[as.character(s_sp[p])]
+  
   # Get final dataframe
-  final$species[rn] <- sp$species[p]
-  final$PA[rn] <- sp$PA[p]
+  final$species[rn] <- sp$species[p] # Add species column
+  final$PA[rn] <- sp$PA[p] # Add presence/absence column
+  
+  # Add country column, ensuring NA values are retained
+  final$country[rn] <- sp$country[p]
+  
+  # Add aquaculture status column, ensuring NA values are retained
+  final$Aquaculture_status[rn] <- sp$Aquaculture_status[p]
+  
   return(final)
 }
 
@@ -233,14 +271,25 @@ GetCroppedRaster <- function(list_raster, extent){
   # Get extent
   name_reg <- paste0(extent)
   region <- world_vect[world_vect$name == name_reg, ]
-  reg_ext <- ext(region)
-  # print(reg_ext)
+  
+  # Draw polygon from coastline
+  intersect <- terra::intersect(coastline_vect, region)
+  
+  # Crop coastline in targeted area
+  crop <- crop(region, intersect)
+  
+  # Add a buffer everywhere following the border
+  buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+  
+  # Combine Geometries
+  combined <- terra::union(region, buffer)
+  
   # Crop raster
   rast_ext <- list()
   for (i in seq_along(list_raster)) {
-    rast_ext[[i]] <- crop(list_raster[[i]], reg_ext)
+    rast_ext[[i]] <- crop(list_raster[[i]], combined, mask = TRUE) # use mask to respect boundaries and not extent
   }
-
+  
   return(rast_ext)
   
   # VERSION APPLY DU CI DESSUS
