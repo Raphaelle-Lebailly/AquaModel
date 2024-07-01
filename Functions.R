@@ -272,22 +272,29 @@ GetCroppedRaster <- function(list_raster, extent){
   name_reg <- paste0(extent)
   region <- world_vect[world_vect$name == name_reg, ]
   
-  # Draw polygon from coastline
-  intersect <- terra::intersect(coastline_vect, region)
-  
-  # Crop coastline in targeted area
-  crop <- crop(region, intersect)
-  
-  # Add a buffer everywhere following the border
-  buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
-  
-  # Combine Geometries
-  combined <- terra::union(region, buffer)
-  
-  # Crop raster
-  rast_ext <- list()
-  for (i in seq_along(list_raster)) {
-    rast_ext[[i]] <- crop(list_raster[[i]], combined, mask = TRUE) # use mask to respect boundaries and not extent
+  if(name_reg %in% countries_with_coastline){
+    # Draw polygon from coastline
+    intersect <- terra::intersect(coastline_vect, region)
+    
+    # Crop coastline in targeted area
+    crop <- crop(region, intersect)
+    
+    # Add a buffer everywhere following the border
+    buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+    
+    # Combine Geometries
+    combined <- terra::union(region, buffer)
+    
+    # Crop raster
+    rast_ext <- list()
+    for (i in seq_along(list_raster)) {
+      rast_ext[[i]] <- crop(list_raster[[i]], combined, mask = TRUE) # use mask to respect boundaries and not extent
+    }
+  } else {
+    rast_ext <- list()
+    for (i in seq_along(list_raster)) {
+      rast_ext[[i]] <- crop(list_raster[[i]], region, mask = TRUE) # use mask to respect boundaries and not extent
+    }
   }
   
   return(rast_ext)
@@ -298,7 +305,6 @@ GetCroppedRaster <- function(list_raster, extent){
   # })
   
 }
-
 
 
 

@@ -38,6 +38,9 @@ world_vect <- vect(world)
 regions <- world$name
 coastline <- ne_download(scale = "medium", type = "coastline", category = "physical", returnclass = "sf") # Get coastlines
 coastline_vect <- vect(coastline) # Convert to spatvector object
+intersected <- terra::intersect(world_vect, coastline_vect) # Get countries list which have coastlines
+countries_with_coastline <- unique(terra::values(intersected)$name)
+
 
 
 
@@ -82,40 +85,6 @@ rm(bio_list, bio)
 gc()
 
 
-
-
-GetCroppedRaster <- function(list_raster, extent){
-  # Get extent
-  name_reg <- paste0(extent)
-  region <- world_vect[world_vect$name == name_reg, ]
-
-  # Draw polygon from coastline
-  intersect <- terra::intersect(coastline_vect, region)
-  
-  # Crop coastline in targeted area
-  crop <- crop(region, intersect)
-  
-  # Add a buffer everywhere following the border
-  buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
-  
-  # Combine Geometries
-  combined <- terra::union(region, buffer)
-  
-    # Crop raster
-  rast_ext <- list()
-  for (i in seq_along(list_raster)) {
-    rast_ext[[i]] <- crop(list_raster[[i]], combined, mask = TRUE) # use mask to respect boundaries and not extent
-  }
-  
-  return(rast_ext)
-  
-  # VERSION APPLY DU CI DESSUS
-  # lapply(X = list_raster, FUN = function(x){
-  #   crop(x, reg_ext)
-  # })
-  
-}
-
 # Set base object # Not cropping before!!
 # BASE <- env_var[[19]] # Fine grid (terrestrial raster)
 BASE <- env_var[[1]] # Coarser grid (aquatic raster)
@@ -143,11 +112,14 @@ BASE <- env_var[[1]] # Coarser grid (aquatic raster)
 ### ENVIRONMENTAL DATA ###
 
 # Here, we decide arbitrarily to target India in order to have an interesting example
-COUNTRY <- 'India'
+COUNTRY <- 'Chad'
 
 # Crop the raster to the extent wanted
 env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRY)
-rm(NO3, PO4, SI, bathy, surftemp, prim_prod, env_var) ; gc() # Remove unused raster
+rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
+# rm(env_var)
+
+plot(env_crop[[20]]) # Check
 
 # Resample: adapt all raster geometry (resolution) to one reference raster
 env_rs <- list()
