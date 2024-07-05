@@ -7,7 +7,60 @@ library(mgcv)
 setwd("C:/Users/User/Desktop/Internship/Data") # Download and load data (!!! LOCAL ADRESS)
 source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Load functions
 
-### SPECIES DATA ###
+#### ENVIRONMENTAL DATA ####
+## Download
+pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
+path_bio <- paste0(pathbio,"/wc2.1_30s_bio") # Make a loop in the future for the different files
+raster_bio <- list.files(path_bio, pattern = "\\.tif$", full.names = TRUE) # Can't open this list of files ??
+bio <- rast(raster_bio)
+# 19 variables 
+
+## Download every environmental variable for aquatic env
+dir <- "C:/Users/User/Desktop/Internship/Data/Climate/aqua"
+# layers <- download_layers(dataset_id, variables, constraints, fmt = "csv", directory = dir) # fmt is the format, can also be a raster
+NO3 <- rast(paste0(dir,"/no3_baseline_2000_2018_depthsurf_8486_b388_df7c_U1716440129770.nc"))
+PO4 <- rast(paste0(dir,"/po4_baseline_2000_2018_depthsurf_6006_d51b_00e9_U1716440256420.nc"))
+SI <- rast(paste0(dir,"/si_baseline_2000_2018_depthsurf_395f_f84b_becc_U1716440390984.nc"))
+bathy <- rast(paste0(dir,"/terrain_characteristics_bea1_f9a7_03c1_U1716440607679.nc"))
+surftemp <- rast(paste0(dir,"/thetao_baseline_2000_2019_depthsurf_74ff_39fa_9adc_U1716440102349.nc"))
+prim_prod <- rast(paste0(dir,"/phyc_baseline_2000_2020_depthsurf_7d39_02af_cdbd_U1716500021103.nc"))
+# List of variables
+env_var <- list(NO3, PO4, SI, bathy, surftemp, prim_prod)
+bio_names <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+               "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+               "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+names(bio) <- bio_names
+bio_list <- lapply(1:nlyr(bio), function(i) bio[[i]])
+env_var <- c(env_var, bio_list) # Add the extracted and renamed layers
+rm(bio_list, bio)
+gc()
+
+
+# Set base object # Not cropping before!!
+# BASE <- env_var[[19]] # Fine grid (terrestrial raster)
+BASE <- env_var[[1]] # Coarser grid (aquatic raster)
+
+
+# List of species per country (OBSOLETE FILES)
+# sp_per_count <- readRDS('species_per_country.rds')
+# spbg_per_count <- readRDS('background_per_country.rds')
+# # Presence of species 
+# sp2count <- readRDS("presence_sp_per_count.rds")
+
+
+
+# We're trying to work with index within the raster file instead of the dataframe because 
+# Very costly in terms of time and memory
+# coords <- matrix(c(aquaspecies_df$x, aquaspecies_df$y), ncol = 2) # Coordinates from aquaspecies df
+# cellnb <- cellFromXY(BASE, xy = coords)
+# x=colFromX(BASE,x=aquaspecies_df$x)
+# y=rowFromY(BASE,y=aquaspecies_df$y)
+# head(cellnb)
+# bg_df2$env1 = env[[1]][bg_df2$row,bg_df2$col,1]
+
+
+#### SPECIES DATA ####
+## Download
 bg_df <- read_rds("real_bg.rds") # All GBIF data (14,757 species)
 # plot(bg_df$x, bg_df$y)
 
@@ -42,92 +95,146 @@ intersected <- terra::intersect(world_vect, coastline_vect) # Get countries list
 countries_with_coastline <- unique(terra::values(intersected)$name)
 
 
+# Call the object 'regions' to have the countries names (spell them right)
+regions <- sort(regions) # Sort by alphabetical order
 
 
-# Visualize the data in the world (plot)
-# ggplot(data = world) +
-#   geom_sf(color = "black") +
-#   geom_sf(fill = "antiquewhite1") +
-#   theme_minimal() +
-#   theme(panel.background = element_rect(fill = 'light blue'))+
-#   # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
-#   geom_point(data = aquaspecies_df, aes(x = x, y = y), size = 1,  # Put the dots from the species filtered subdataframe
-#              shape = 21, fill = "blue") +
-#   ggtitle(label = c("Species location points in the world"))
+# Here, we decide arbitrarily to target India in order to have an interesting example
+COUNTRY <- 'India'
+which(regions == COUNTRY) # Check if present in the list
+name_reg <- paste0(COUNTRY)
+region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
+
+# Get buffered targeted region
+# Draw polygon from coastline
+intersect <- terra::intersect(coastline_vect, region)
+# Crop coastline in targeted area
+crop <- crop(region, intersect)
+# Add a buffer everywhere following the border
+buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+# Combine Geometries
+combined <- combineGeoms(region, buffer) # Final geometry
+
+# Intersect the points of interest
+lonlat <- cbind(aquaspecies_df$x, aquaspecies_df$y) # Get coordinates
+pts <- vect(lonlat, crs = "WGS 84") # As SpatVector
+inter_points <- terra::intersect(combined, pts) # Intersect points and buffer
+coords <- geom(inter_points) # Extract coordinates with points
+points_df <- data.frame(x = coords[, "x"], y = coords[, "y"]) # 
+
+# Visualize the data in the world (plot) or in the targeted area
+ggplot(region) +
+  geom_sf(color = "black") +
+  geom_sf(fill = "antiquewhite1") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'lightblue')) +
+  geom_point(data = points_df, aes(x = x, y = y), size = 1, shape = 21, fill = "blue") +
+  coord_sf(xlim = c(ext(region)[1], ext(region)[2]), ylim = c(ext(region)[3], ext(region)[4]), expand = FALSE) +
+  labs(title = paste0("Species location points in ", COUNTRY)) +
+  xlab("Longitude") + ylab("Latitude") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+rm(lonlat, pts, coords, inter_points) ; gc()
 
 
-### ENVIRONMENTAL DATA ###
-## Download
-pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
-path_bio <- paste0(pathbio,"/wc2.1_30s_bio") # Make a loop in the future for the different files
-raster_bio <- list.files(path_bio, pattern = "\\.tif$", full.names = TRUE) # Can't open this list of files ??
-bio <- rast(raster_bio)
-# 19 variables 
+##############################*
+##############################*
+COUNTRY <- 'Finland'
+regions <- world$name
+regions <- sort(regions)
+which(regions == COUNTRY) # Check if present in the list
+name_reg <- paste0(COUNTRY)
+region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
+plot(region)
 
-## Download every environmental variable for aquatic env
-dir <- "C:/Users/User/Desktop/Internship/Data/Climate/aqua"
-# layers <- download_layers(dataset_id, variables, constraints, fmt = "csv", directory = dir) # fmt is the format, can also be a raster
-NO3 <- rast(paste0(dir,"/no3_baseline_2000_2018_depthsurf_8486_b388_df7c_U1716440129770.nc"))
-PO4 <- rast(paste0(dir,"/po4_baseline_2000_2018_depthsurf_6006_d51b_00e9_U1716440256420.nc"))
-SI <- rast(paste0(dir,"/si_baseline_2000_2018_depthsurf_395f_f84b_becc_U1716440390984.nc"))
-bathy <- rast(paste0(dir,"/terrain_characteristics_bea1_f9a7_03c1_U1716440607679.nc"))
-surftemp <- rast(paste0(dir,"/thetao_baseline_2000_2019_depthsurf_74ff_39fa_9adc_U1716440102349.nc"))
-prim_prod <- rast(paste0(dir,"/phyc_baseline_2000_2020_depthsurf_7d39_02af_cdbd_U1716500021103.nc"))
-# List of variables
-env_var <- list(NO3, PO4, SI, bathy, surftemp, prim_prod)
-bio_names <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
-               "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
-               "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
-names(bio) <- bio_names
-bio_list <- lapply(1:nlyr(bio), function(i) bio[[i]])
-env_var <- c(env_var, bio_list) # Add the extracted and renamed layers
-rm(bio_list, bio)
-gc()
+intersect <- terra::intersect(coastline_vect, region)
+plot(intersect)
+# Crop coastline in targeted area
+crop <- crop(region, intersect)
+plot(crop)
+# Add a buffer everywhere following the border
+buffer <- buffer(crop, width = 22000, singlesided = TRUE) # Apply 22km buffer on all coasts
+# plot(intersect, type = "l")
+# lines(buffer,  col = "red")
+plot(buffer)
 
-
-# Set base object # Not cropping before!!
-# BASE <- env_var[[19]] # Fine grid (terrestrial raster)
-BASE <- env_var[[1]] # Coarser grid (aquatic raster)
-
-# List of species per country
-# sp_per_count <- readRDS('species_per_country.rds')
-# spbg_per_count <- readRDS('background_per_country.rds')
-# # Presence of species 
-# sp2count <- readRDS("presence_sp_per_count.rds")
+# Combine Geometries
+combined_ <- combineGeoms(region, buffer) # Final geometry
+plot(combined_)
+# lines(region)
 
 
 
-# We're trying to work with index within the raster file instead of the dataframe because 
-# Very costly in terms of time and memory
-# coords <- matrix(c(aquaspecies_df$x, aquaspecies_df$y), ncol = 2) # Coordinates from aquaspecies df
-# cellnb <- cellFromXY(BASE, xy = coords)
-# x=colFromX(BASE,x=aquaspecies_df$x)
-# y=rowFromY(BASE,y=aquaspecies_df$y)
-# head(cellnb)
-# bg_df2$env1 = env[[1]][bg_df2$row,bg_df2$col,1]
+regions2 <- regions # Everything in order
+r <-  regions 
 
+which(r == 'China')
+r <- r[-45]
+which(r == 'Finland')
+r <- r[-72]
+
+
+
+regions <- r
+# regions <- "China"
+buffered_regions <- list()
+
+for(i in seq_along(regions)){
+  # Isolate region geometry
+  region <- world_vect[world_vect$name == regions[i], ]
+  
+  if(regions[i] %in% countries_with_coastline){
+    # Draw polygon from coastline
+    intersect <- terra::intersect(coastline_vect, region)
+    
+    # Crop coastline in targeted area
+    crop <- crop(region, intersect)
+    
+    # Add a buffer everywhere following the border
+    buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+    
+    # Combine Geometries
+    combined <- combineGeoms(region, buffer)
+    
+    # Crop raster
+    buffered_regions[i] <- combined
+
+  } else {
+    buffered_regions[i] <- region
+  }
+}
+
+buffered_regions_vect <- vect(buffered_regions)
+
+plot(buffered_regions_vect, col = "red")
+
+plot(world_vect[world_vect$name == "Finland", ])
+
+plot(buffered_regions_vect[[240]])
+
+##############################*
+##############################*
+
+saveRDS(buffered_regions_vect, "all_buff_countries_vect.rds")
 
 # Data management ---------------------------------------------------------
 
-### ENVIRONMENTAL DATA ###
-
-# Here, we decide arbitrarily to target India in order to have an interesting example
-COUNTRY <- 'Chad'
+#### ENVIRONMENTAL DATA ####
 
 # Crop the raster to the extent wanted
-env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRY)
+env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRY) # "Empty geometry" line if country misspelled
 rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
-# rm(env_var)
+rm(env_var)
 
-plot(env_crop[[20]]) # Check
+plot(env_crop[[1]]) # Check
 
 # Resample: adapt all raster geometry (resolution) to one reference raster
 env_rs <- list()
 for (i in seq_along(env_crop)) {
   env_rs[[i]] <- resample(env_crop[[i]], BASE, "bilinear") # OK
 }
-gc()
-rm(env_crop)
+rm(env_crop) ; gc()
+
 # Convert into dataframe
 env_df <- list()
 for (i in seq_along(env_rs)) {
@@ -168,35 +275,14 @@ library(SeaVal) # Add countries names according to coordinates
 
 # Add countries column in full bg dataframe....
 bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
-world <- ne_countries(scale = "medium", returnclass = "sf") # Problematic (missing values) (rnaturalearth)
 bg_df2 <- as.data.table(bg_df2)
 bg_df2 <- add_country_names(bg_df2, regions = world) # With SeaVal package
 bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
 bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 # rm(bg_df) ; gc() # Clean memory (CM)
 
-# OTHER METHOD (does not work yet)
-# world2 <- getMap(resolution = "high") # Load world data (rworldmap)
-# coordinates(bg_df2) <- ~ lon + lat
-# proj4string(bg_df2) <- proj4string(world)
-# countries <- over(bg_df2, world) # Geoloc inverse
-# bg_df2 <- as.data.frame(bg_df2)
-# bg_df2$country <- countries$ADMIN
-# bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 
 # ...AND aquaspecies dataframe 
-# Get the list of species per country > threshold (occurrences)
-# OCC <- 5 # Set threshold number of minimal occurrences 
-# subdf_thrsh <- aquaspecies_df %>% # Get species occurrences for all countries (> threshold)
-#   group_by(species) %>%
-#   tidyterra::filter(n() >= OCC) %>% 
-#   ungroup() # 348 sp for OCC = 5
-# subdf_thrsh <- droplevels(subdf_thrsh)
-
-# species_counts <- table(aquaspecies_df$species) # Useless??
-# species_above_threshold <- names(species_counts[species_counts >= OCC])
-# subdf_thrsh <- aquaspecies_df[aquaspecies_df$species %in% species_above_threshold, ]
-
 # Add countries
 aq_df2 <- tidyterra::rename(aquaspecies_df, lon = x, lat = y)
 aq_df2 <- as.data.table(aq_df2)
@@ -223,17 +309,9 @@ aq_df_occ <- aq_df2 %>% # Get species occurrences for all countries (> threshold
   ungroup()
 rm(aq_df2) ; gc()
 occurences2 <- table(aq_df_occ$species) # Check if threshold respected
-print(occurences2) # OK
+print(occurences2) # OK, 147 species
 
-# Set target species (later on, vector of species found in the targeted area )
-#######################*
-#######################*
-# Add filter per country of interest to get the species list to generate the dataframes later on
-
-#######################*
-#######################*
-
-
+# Target 1 species
 SPECIES <-  "Anabas testudineus" # Here example of species present in India (we don't know where else it's present)
 aq_df_sp <- aq_df_occ %>% 
   tidyterra::filter(species == SPECIES) # Filter only the species of interest

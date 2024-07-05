@@ -283,7 +283,7 @@ GetCroppedRaster <- function(list_raster, extent){
     buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
     
     # Combine Geometries
-    combined <- terra::union(region, buffer)
+    combined <- combineGeoms(region, buffer)
     
     # Crop raster
     rast_ext <- list()
