@@ -99,84 +99,77 @@ countries_with_coastline <- unique(terra::values(intersected)$name)
 regions <- sort(regions) # Sort by alphabetical order
 
 
-# Here, we decide arbitrarily to target India in order to have an interesting example
-COUNTRY <- 'India'
+# Visualizing the points (aquaculture species occurrence in the targeted country) -----------------------------
+# COUNTRY <- 'China'
+# which(regions == COUNTRY) # Check if present in the list
+# name_reg <- paste0(COUNTRY)
+# region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
+# 
+# # Get buffered targeted region
+# # Draw polygon from coastline
+# intersect <- terra::intersect(coastline_vect, region)
+# # Crop coastline in targeted area
+# crop <- crop(region, intersect)
+# # Add a buffer everywhere following the border
+# buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+# # Combine Geometries
+# combined <- combineGeoms(region, buffer) # Final geometry
+# 
+# # Intersect the points of interest
+# lonlat <- cbind(aquaspecies_df$x, aquaspecies_df$y) # Get coordinates
+# pts <- vect(lonlat, crs = "WGS 84") # As SpatVector
+# inter_points <- terra::intersect(combined, pts) # Intersect points and buffer
+# coords <- geom(inter_points) # Extract coordinates with points
+# points_df <- data.frame(x = coords[, "x"], y = coords[, "y"]) # 
+# 
+# # Visualize the data in the world (plot) or in the targeted area
+# ggplot(region) +
+#   geom_sf(color = "black") +
+#   geom_sf(fill = "antiquewhite1") +
+#   theme_minimal() +
+#   theme(panel.background = element_rect(fill = 'lightblue')) +
+#   geom_point(data = points_df, aes(x = x, y = y), size = 1, shape = 21, fill = "blue") +
+#   coord_sf(xlim = c(ext(region)[1], ext(region)[2]), ylim = c(ext(region)[3], ext(region)[4]), expand = FALSE) +
+#   labs(title = paste0("Species location points in ", COUNTRY)) +
+#   xlab("Longitude") + ylab("Latitude") +
+#   theme(plot.title = element_text(hjust = 0.5))
+
+# rm(lonlat, pts, coords, inter_points) ; gc()
+
+
+
+# Data management ---------------------------------------------------------
+
+#### OTHERS ####
+
+# Countries Geometries
+
+# Check for 1 country
+COUNTRY <- 'China'
+# regions <- world$name
+# regions <- sort(regions)
 which(regions == COUNTRY) # Check if present in the list
 name_reg <- paste0(COUNTRY)
 region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
-
-# Get buffered targeted region
-# Draw polygon from coastline
-intersect <- terra::intersect(coastline_vect, region)
-# Crop coastline in targeted area
-crop <- crop(region, intersect)
-# Add a buffer everywhere following the border
-buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
-# Combine Geometries
-combined <- combineGeoms(region, buffer) # Final geometry
-
-# Intersect the points of interest
-lonlat <- cbind(aquaspecies_df$x, aquaspecies_df$y) # Get coordinates
-pts <- vect(lonlat, crs = "WGS 84") # As SpatVector
-inter_points <- terra::intersect(combined, pts) # Intersect points and buffer
-coords <- geom(inter_points) # Extract coordinates with points
-points_df <- data.frame(x = coords[, "x"], y = coords[, "y"]) # 
-
-# Visualize the data in the world (plot) or in the targeted area
-ggplot(region) +
-  geom_sf(color = "black") +
-  geom_sf(fill = "antiquewhite1") +
-  theme_minimal() +
-  theme(panel.background = element_rect(fill = 'lightblue')) +
-  geom_point(data = points_df, aes(x = x, y = y), size = 1, shape = 21, fill = "blue") +
-  coord_sf(xlim = c(ext(region)[1], ext(region)[2]), ylim = c(ext(region)[3], ext(region)[4]), expand = FALSE) +
-  labs(title = paste0("Species location points in ", COUNTRY)) +
-  xlab("Longitude") + ylab("Latitude") +
-  theme(plot.title = element_text(hjust = 0.5))
-
-rm(lonlat, pts, coords, inter_points) ; gc()
+# plot(region)
+# 
+# intersect <- terra::intersect(coastline_vect, region)
+# plot(intersect)
+# # Crop coastline in targeted area
+# crop <- crop(region, intersect)
+# # plot(crop)
+# # Add a buffer everywhere following the border
+# buffer <- buffer(crop, width = 22000, singlesided = TRUE) # Apply 22km buffer on all coasts
+# # plot(intersect, type = "l")
+# # lines(buffer,  col = "red")
+# 
+# # Combine Geometries
+# combined_ <- combineGeoms(region, buffer) # Final geometry
+# # plot(combined_)
+# # lines(region)
 
 
-##############################*
-##############################*
-COUNTRY <- 'Finland'
-regions <- world$name
-regions <- sort(regions)
-which(regions == COUNTRY) # Check if present in the list
-name_reg <- paste0(COUNTRY)
-region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
-plot(region)
-
-intersect <- terra::intersect(coastline_vect, region)
-plot(intersect)
-# Crop coastline in targeted area
-crop <- crop(region, intersect)
-plot(crop)
-# Add a buffer everywhere following the border
-buffer <- buffer(crop, width = 22000, singlesided = TRUE) # Apply 22km buffer on all coasts
-# plot(intersect, type = "l")
-# lines(buffer,  col = "red")
-plot(buffer)
-
-# Combine Geometries
-combined_ <- combineGeoms(region, buffer) # Final geometry
-plot(combined_)
-# lines(region)
-
-
-
-regions2 <- regions # Everything in order
-r <-  regions 
-
-which(r == 'China')
-r <- r[-45]
-which(r == 'Finland')
-r <- r[-72]
-
-
-
-regions <- r
-# regions <- "China"
+# For all countries
 buffered_regions <- list()
 
 for(i in seq_along(regions)){
@@ -198,49 +191,184 @@ for(i in seq_along(regions)){
     
     # Crop raster
     buffered_regions[i] <- combined
-
+    
   } else {
     buffered_regions[i] <- region
   }
 }
 
-buffered_regions_vect <- vect(buffered_regions)
+buffered_regions_vect <- vect(buffered_regions) # Combine the list of spatvectors into 1 spatvector
+# plot(buffered_regions[[40]]) # Check if works individually
+# plot(buffered_regions_vect) # Or Globally
 
-plot(buffered_regions_vect, col = "red")
+# saveRDS(buffered_regions, "buffered_regions.rds")
 
-plot(world_vect[world_vect$name == "Finland", ])
 
-plot(buffered_regions_vect[[240]])
+### SPECIES DATA ###
 
-##############################*
-##############################*
+# Test map
+# Current geometry from rnaturalearth package but multiple issues to map the data
+# See if there are pb also with cropping per country the data (missing data that are not inlands)
+# world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
+# plot(world2)
+library(SeaVal) # Add countries names according to coordinates
 
-saveRDS(buffered_regions_vect, "all_buff_countries_vect.rds")
+# Normally, with "world" object (in add_country_names) but we need the corrected geometries on the coast
+buff_countries <- as_sf(buffered_regions_vect)
 
-# Data management ---------------------------------------------------------
+# Add countries column in full bg dataframe....
+bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
+bg_df2 <- as.data.table(bg_df2)
+bg_df2 <- add_country_names(bg_df2, regions = buff_countries) # With SeaVal package
+bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
+bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+# rm(bg_df) ; gc() # Clean memory (CM)
+bg_df2 <- na.omit(bg_df2, cols = "country")
+
+# ...AND aquaspecies dataframe 
+# Add countries
+aq_df2 <- tidyterra::rename(aquaspecies_df, lon = x, lat = y)
+aq_df2 <- as.data.table(aq_df2)
+aq_df2 <- add_country_names(aq_df2, regions = buff_countries)
+aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
+aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+# rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
+
+
+# Select subset of the targeted country for aquaculture species
+
+# Filter to target
+# Aquaculture species
+# USELESS TO FILTER BY COUNTRY: WE STUDY SPECIES IN ALL AREAS POSSIBLE AND NOT LIMITED BY ADMINISTRATIVE BORDERS
+# WE WANT TO FOCUS ON SPECIES PRESENT IN A COUNTRY OF INTEREST, NOTLIMIT THE AREA TO THE COUNTRY CONCERNING THE AREA OF DISTRIBUTION
+
+# subsp_count <- aq_df2 %>% # Filter by targeted country 
+  # tidyterra::filter(country == COUNTRY)
+
+OCC <- 5 # Set threshold number of minimal occurrences 
+aq_df_occ <- aq_df2 %>% # Get species occurrences for all countries (> threshold)
+  group_by(species) %>%
+  tidyterra::filter(n() >= OCC) %>% 
+  ungroup()
+rm(aq_df2) ; gc()
+occurences2 <- table(aq_df_occ$species) # Check if threshold respected
+# print(occurences2) # OK, 147 species
+# length(occurences2)
+
+# Target 1 species
+SPECIES <-  "Carassius auratus" # Here example of species present in China (we don't know where else it's present)
+aq_df_sp <- aq_df_occ %>% 
+  tidyterra::filter(species == SPECIES) # Filter only the species of interest
+
+
+# Visualize the points of the targeted species in India
+reg <- ext(region)
+ggplot(data = world) +
+  geom_sf(color = "black") +
+  geom_sf(fill = "antiquewhite1") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'light blue'))+
+  coord_sf(xlim = c(reg[1], reg[2]), ylim = c(reg[3], reg[4]), expand = FALSE) +
+  geom_point(data = aq_df_sp, aes(x = x, y = y), size = 2,  # Put the dots from the species filtered subdataframe
+             shape = 21, fill = "green") 
+
+# Looks very much in the country so does not make sense that I'm missing the data in the final dataframe... pb of matching?
+# Only 5 points appear out of 9.
+
+# In the world
+# ggplot(data = world) +
+#   geom_sf(color = "black") +
+#   geom_sf(fill = "antiquewhite1") +
+#   theme_minimal() +
+#   theme(panel.background = element_rect(fill = 'light blue'))+
+#   # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
+#   geom_point(data = aq_df_occ, aes(x = x, y = y), size = 1,  # Put the dots from the species filtered subdataframe
+#              shape = 21, fill = "red") +
+#   ggtitle(label = c("Species location points in the world (occurrence > 5)"))
+
+
+# Get background species according to targeted species
+sample_background <- function(bg_df, sp){ # Modify conditions about including NAs countries. Add the buffer. 
+  
+  # Extract countries where targeted species occur
+  countries_filtered <- unique(bg_df$country[bg_df$species == sp])
+  
+  # Filter SP background
+  df.temp <- bg_df2[bg_df2$species != SPECIES & bg_df2$country %in% countries_filtered,] 
+  if(length(df.temp$species) > 10000){
+    row.temp <- sample(x = 1:nrow(df.temp), size = 10000, replace = F)  # random coordinates sample, size 10,000
+    sub_df = df.temp[row.temp,]
+  } else {
+    sub_df <- df.temp
+  } 
+  return(sub_df)
+}
+
+spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
+
+# Visualize background points
+ggplot(data = world) +
+  geom_sf(color = "black") +
+  geom_sf(fill = "antiquewhite1") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'light blue'))+
+  # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
+  geom_point(data = spbg, aes(x = x, y = y), size = 1,  # Put the dots from the species filtered subdataframe
+             shape = 21, fill = "red") +
+  ggtitle(label = paste0("Background points for ", SPECIES))
+
+# Prepare data
+spbg$PA <- 0 # Add presence absence column
+aq_df_sp$PA <- 1 
+
+# Merge the species dataframes (presence/absence df)
+spPA <- rbind(aq_df_sp, spbg)
+
+# Visualize (check where are the dots compared to the species of interest)
+ggplot(data = world) +
+  geom_sf(color = "black") +
+  geom_sf(fill = "antiquewhite1") +
+  theme_minimal() +
+  theme(panel.background = element_rect(fill = 'light blue'))+
+  geom_point(data = spPA, aes(x = x, y = y, fill = factor(PA)), size = 2,  # Utilisez factor(PA) pour traiter PA comme une catégorie
+             shape = 21) +
+  scale_fill_manual( name = "Presence/Absence", values = c("0" = "red", "1" = "green")) + 
+  ggtitle(label = paste0("Species background location points in the area of distribution of", SPECIES)) +
+  theme(legend.title = element_text(size = 9), title = element_text(size = 10))
 
 #### ENVIRONMENTAL DATA ####
 
-# Crop the raster to the extent wanted
-env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRY) # "Empty geometry" line if country misspelled
-rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
-rm(env_var)
+# Get Countries where species occurr
+countries_filtered <- unique(bg_df2$country[bg_df2$species == SPECIES])
 
-plot(env_crop[[1]]) # Check
+# Crop the raster to the extent wanted (all countries targeted)
+env_crop <- lapply(X = countries_filtered, FUN = function(X){
+  GetCroppedRaster(list_raster = env_var, extent = X) # "Empty geometry" line if country misspelled
+})
+
+env_crop <- unlist(env_crop) ; gc()
+
+# env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRIES) # "Empty geometry" line if country misspelled
+# rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
+# rm(env_var)
+# plot(env_crop[[20]]) # Check
 
 # Resample: adapt all raster geometry (resolution) to one reference raster
 env_rs <- list()
 for (i in seq_along(env_crop)) {
   env_rs[[i]] <- resample(env_crop[[i]], BASE, "bilinear") # OK
 }
-rm(env_crop) ; gc()
+rm(env_crop2) ; gc()
+
 
 # Convert into dataframe
 env_df <- list()
 for (i in seq_along(env_rs)) {
-  env_df[[i]] <- as.data.frame(env_rs[[i]], xy = TRUE)
+  env_df[[i]] <- as.data.frame(env_rs[[i]], xy = TRUE) # Very long.... OPTIMIZE
 }
-rm(env_crop, env_rs) ; gc()
+rm(env_rs) ; gc()
+
+test <- unlist(env_df)
 
 # Merge (+ cell ID)
 GetMerged <- function(df_list, group_size = 10) {
@@ -264,145 +392,8 @@ env_mg <- GetMerged(df_list = env_df, group_size = length(env_df))
 rm(env_df) ; gc()
 
 
-### SPECIES DATA ###
-
-# Test map
-# Current geometry from rnaturalearth package but multiple issues to map the data
-# See if there are pb also with cropping per country the data (missing data that are not inlands)
-# world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
-# plot(world2)
-library(SeaVal) # Add countries names according to coordinates
-
-# Add countries column in full bg dataframe....
-bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
-bg_df2 <- as.data.table(bg_df2)
-bg_df2 <- add_country_names(bg_df2, regions = world) # With SeaVal package
-bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
-bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
-# rm(bg_df) ; gc() # Clean memory (CM)
-
-
-# ...AND aquaspecies dataframe 
-# Add countries
-aq_df2 <- tidyterra::rename(aquaspecies_df, lon = x, lat = y)
-aq_df2 <- as.data.table(aq_df2)
-aq_df2 <- add_country_names(aq_df2)
-aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
-aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
-# rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
-
-
-# Select subset of the targeted country for aquaculture species
-
-# Filter to target
-# Aquaculture species
-# USELESS TO FILTER BY COUNTRY: WE STUDY SPECIES IN ALL AREAS POSSIBLE AND NOT LIMITED BY ADMINISTRATIVE BORDERS
-# WE WANT TO FOCUS ON SPECIES PRESENT IN A COUNTRY OF INTEREST, NOTLIMIT THE AREA TO THE COUNTRY CONCERNING THE AREA OF DISTRIBUTION
-
-# subsp_count <- aq_df2 %>% # Filter by targeted country 
-  # tidyterra::filter(country == COUNTRY)
-
-OCC <- 5 # Set threshold number of minimal occurrences 
-aq_df_occ <- aq_df2 %>% # Get species occurrences for all countries (> threshold)
-  group_by(species) %>%
-  tidyterra::filter(n() >= OCC) %>% 
-  ungroup()
-rm(aq_df2) ; gc()
-occurences2 <- table(aq_df_occ$species) # Check if threshold respected
-print(occurences2) # OK, 147 species
-
-# Target 1 species
-SPECIES <-  "Anabas testudineus" # Here example of species present in India (we don't know where else it's present)
-aq_df_sp <- aq_df_occ %>% 
-  tidyterra::filter(species == SPECIES) # Filter only the species of interest
-
-plot(aq_df_sp$x, aq_df_sp$y, main = SPECIES) # Plot the points
-
-# Visualize the points of the targeted species in India
-ggplot(data = world) +
-  geom_sf(color = "black") +
-  geom_sf(fill = "antiquewhite1") +
-  theme_minimal() +
-  theme(panel.background = element_rect(fill = 'light blue'))+
-  coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
-  geom_point(data = aq_df_sp, aes(x = x, y = y), size = 2,  # Put the dots from the species filtered subdataframe
-             shape = 21, fill = "green") 
-
-# Looks very much in the country so does not make sense that I'm missing the data in the final dataframe... pb of matching?
-# Only 5 points appear out of 9.
-
-# In the world
-ggplot(data = world) +
-  geom_sf(color = "black") +
-  geom_sf(fill = "antiquewhite1") +
-  theme_minimal() +
-  theme(panel.background = element_rect(fill = 'light blue'))+
-  # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
-  geom_point(data = aq_df_occ, aes(x = x, y = y), size = 1,  # Put the dots from the species filtered subdataframe
-             shape = 21, fill = "red") +
-  ggtitle(label = c("Species location points in the world (occurrence > 5)"))
-
-
-# Get background species according to targeted species
-sample_background <- function(bg_df, sp){ # Modify conditions about including NAs countries. Add the buffer. 
-  
-  # Extract countries where targeted species occur
-  countries_filtered <- bg_df$country[bg_df$species == sp]
-  
-  # Filter SP background
-  df.temp <- bg_df[bg_df$species != sp & countries_filtered %in% countries_filtered,]  
-  row.temp <- sample(x = 1:nrow(df.temp), size = 10000, replace = F)  # random coordinates sample, size 10,000
-  
-  return(sub_df = df.temp[row.temp,])
-}
-spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
-
-plot(spbg$x, spbg$y, main = c("Background points for ", SPECIES)) # DOES NOT WORK (probably because of the NA problem and selection of the countries)
-
-# Logically, supposed to be in the same area than the species of interest because is a sample of background
-# species in the area of distribution of the species of interest
-
-# Get a list of the countries where aquaculture species occur
-# get_countries <- function(data) {
-#   result <- list()
-#   for (i in 1:nrow(data)) {
-#     result[[rownames(data)[i]]] <- colnames(data)[data[i, ] == 1]
-#   }
-#   return(result)
-# }
-# # List of countries where the aquaculture species has been observed
-# count_per_sp <- get_countries(sp2count)
-# species <- unique(aquaspecies_df$species) # List of species names
-# countries <- names(sp_per_count) # List of countries names
-
-# Prepare data
-spbg$PA <- 0 # Add presence absence column
-aq_df_sp$PA <- 1 
-
-# Merge the species dataframes (presence/absence df)
-spPA <- rbind(aq_df_sp, spbg)
-
-# Visualize (check where are the dots compared to the species of interest)
-ggplot(data = world) +
-  geom_sf(color = "black") +
-  geom_sf(fill = "antiquewhite1") +
-  theme_minimal() +
-  theme(panel.background = element_rect(fill = 'light blue'))+
-  # coord_sf(xlim = c(ext(india)[1], ext(india)[2]), ylim = c(ext(india)[3], ext(india)[4]), expand = FALSE) +
-  geom_point(data = spPA, aes(x = x, y = y, fill = factor(PA)), size = 3,  # Utilisez factor(PA) pour traiter PA comme une catégorie
-             shape = 21) +
-  scale_fill_manual( name = "Presence/Absence", values = c("0" = "red", "1" = "green")) + 
-  ggtitle(label = c("Species background location points in the area of distribution of the target species")) +
-  theme(legend.title = element_text(size = 9), title = element_text(size = 10))
-
-
-
-
 ### MERGE ALL ###
-dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE) # Add country 
-# We add the species data 
-# Only 1 data for 
-
+dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE) # Add environmental data
 
 # Plus l'impression que tout ca soit utile
 # Generate per species the equation
