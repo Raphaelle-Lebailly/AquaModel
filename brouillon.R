@@ -1,7 +1,6 @@
 # Goal: implement the background data of all the countries containing the species of interest
 library(mgcv)
 
-
 # Load data, packages and functions ---------------------------------------
 
 setwd("C:/Users/User/Desktop/Internship/Data") # Download and load data (!!! LOCAL ADRESS)
@@ -174,38 +173,86 @@ region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
 # For all countries
 # buffered_regions <- readRDS("buffered_regions.rds")
 buffered_regions <- list()
+
 for(i in seq_along(regions)){
   # Isolate region geometry
   region <- world_vect[world_vect$name == regions[i], ]
-
   if(regions[i] %in% countries_with_coastline){
     # Draw polygon from coastline
     intersect <- terra::intersect(coastline_vect, region)
-
     # Crop coastline in targeted area
-    crop <- crop(region, intersect)
-
+    crop <- terra::crop( region, intersect)
     # Add a buffer everywhere following the border
     buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
-
     # Combine Geometries
     combined <- combineGeoms(region, buffer)
-
-    # Crop raster
-    buffered_regions[i] <- combined
-
+    # Aggregate everything that overlaps in the assembled coast and country SpatVector
+    combined_polygons <- aggregate(combined, dissolve = TRUE)
+    # Add buffered object
+    buffered_regions[i] <- combined_polygons
   } else {
     buffered_regions[i] <- region
   }
-} # A bit long (import object) ; but when import object, session aborts
+} # A bit long (import object) ; but when import object, session aborts, so keep the loop.
 
 rm(intersect, crop, buffer) ; gc()
 
 buffered_regions_vect <- vect(buffered_regions) # Combine the list of spatvectors into 1 spatvector
-# plot(buffered_regions[[40]]) # Check if works individually
-# plot(buffered_regions_vect) # Or Globally
+# plot(buffered_regions[[40]]) # Check if works individually (Canada)
+# plot(buffered_regions[[45]])
+# lines(world_vect[world_vect$name == 'China', ])
 
-# saveRDS(buffered_regions, "buffered_regions.rds")
+# Visualize the results
+# img <-  ggplot(world_vect) +
+#   geom_sf(color = "black") +
+#   geom_sf(fill = "antiquewhite1") +
+#   theme_minimal() +
+#   theme(panel.background = element_rect(fill = 'lightblue'))
+# img2 <-  ggplot(buffered_regions_vect) +
+#   geom_sf(color = "black") +
+#   geom_sf(fill = "antiquewhite1") +
+#   theme_minimal() +
+#   theme(panel.background = element_rect(fill = 'lightblue'))
+# ggsave(filename = 'map_no_buffer.pdf', plot = img, width = 10, height = 4)
+# ggsave(filename = 'map_buffer.pdf', plot = img2, width = 10, height = 4)
+
+
+######################################*
+######################################*
+
+# Check if there are any intersections / overlays between the polygons
+# test <- buffered_regions[-45] # # 45 is china, remove because issues with function below (buffer is weird)
+buffered_regions_vect2 <- vect(test)
+plot(buffered_regions[[10]])
+lines(buffered_regions[[46]])
+regions[10]
+
+check_overlaps_relate <- function(vect) {
+  n <- nrow(vect)
+  overlaps <- matrix(FALSE, n, n)
+  for (i in 1:(n-1)) {
+    for (j in (i+1):n) {
+      overlaps[i,j] <- relate(vect[i, ], vect[j, ], relation = "overlaps")
+    }
+  }
+  return(overlaps)
+}
+
+# Appliquer la fonction pour vérifier les chevauchements
+overlaps_matrix_relate <- check_overlaps_relate(buffered_regions_vect)
+
+# Identifier les paires de polygones qui se chevauchent
+overlapping_pairs_relate <- which(overlaps_matrix_relate, arr.ind = TRUE)
+
+# Afficher les paires de polygones qui se chevauchent
+overlapping_pairs_relate # I DO have overlaps, 183 combinations
+
+# Overlaps with neighbor countries on the coast AND ON THE LAND SOMETIMES
+
+
+
+######################################*
+######################################*
 
 
 ### SPECIES DATA ###
@@ -217,7 +264,7 @@ buffered_regions_vect <- vect(buffered_regions) # Combine the list of spatvector
 # plot(world2)
 library(SeaVal) # Add countries names according to coordinates (DOES NOT WOOOORK)
 
-
+# Other thing to test out if I have overlaps between countries
 ##############################*
 ##############################*
 
@@ -241,9 +288,6 @@ for (i in seq_along(regions)) {
 
 # Avoid overlaps in buffers
 combined_regions <- do.call(st_sfc, buffered_regions2)
-
-
-
 
 
 # Test new method:
@@ -287,7 +331,7 @@ buff_countries <- as_sf(buffered_regions_vect) # We do have the changed geometri
 # Add countries column in full bg dataframe....
 bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
 bg_df2 <- as.data.table(bg_df2)
-bg_df2 <- add_country_names(bg_df2, regions = countries_filtered) # With SeaVal package
+bg_df2 <- add_country_names(bg_df2, regions = buff_countries) # With SeaVal package
 bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
 bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 # rm(bg_df) ; gc() # Clean memory (CM)
