@@ -387,14 +387,14 @@ GetBg <-function(countries, df){
 
 
 ### Matrix of presence/absence of species per country 
-u=unique(aquaspecies_df$species) # List of all of the species names
-rn_sp=tapply(1:length(u),u,function(x){return(x)})
-df_spc=matrix(0,nrow=length(unique(aquaspecies_df$species)),ncol=length(regions))
-rownames(df_spc)=u
-colnames(df_spc)=regions
-for(i in 1:length(regions)){
-  df_spc[rn_sp[t[[i]]],i]=1
-}
+# u=unique(aquaspecies_df$species) # List of all of the species names
+# rn_sp=tapply(1:length(u),u,function(x){return(x)})
+# df_spc=matrix(0,nrow=length(unique(aquaspecies_df$species)),ncol=length(regions))
+# rownames(df_spc)=u
+# colnames(df_spc)=regions
+# for(i in 1:length(regions)){
+#   df_spc[rn_sp[t[[i]]],i]=1
+# }
 # saveRDS(df_spc,"presence_sp_per_count.rds")
 # df_spc is the dataframe of presences of species per country
 
@@ -450,9 +450,9 @@ GetSubBg_sp <-function(bg_df, spc_df, sp_name){
   return(sub_bg)
 }
 
-sp_names <- unique(aquaspecies_df$species)
+# sp_names <- unique(aquaspecies_df$species)
 # List of dataframes with presences and pseudoabsences
-GetSubBg_sp(bg_df,df_spc, sp_names)
+# GetSubBg_sp(bg_df,df_spc, sp_names)
 
 GetSubBg <-function(bg_df, extent){
   # Get extent
@@ -475,7 +475,7 @@ GetSubBg <-function(bg_df, extent){
 
 # Group fusion for big dataframes -----------------------------------------
 
-GetMerged <- function(df_list, group_size = 10) {
+GetMerged <- function(df_list, group_size) {
   merged_list <- list()
   num_groups <- ceiling(length(df_list) / group_size)
   

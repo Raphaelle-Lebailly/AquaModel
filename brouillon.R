@@ -78,11 +78,13 @@ sp_fb <- fb_tbl("species") %>%
 bg_df <- bg_df %>% 
   left_join(sp_fb, by = "species")
 rm(sp_fb) ; gc()
+bg_df <- distinct(bg_df)
 # Retrieve species with non NA aquaculture status
 aquaspecies_df <- na.omit(bg_df)
+aquaspecies_df <- distinct(aquaspecies_df)
 # plot(aquaspecies_df$x, aquaspecies_df$y) # Check data repartition
-
 # We mostly have data in western and central Africa and eastern North America
+
 
 # Import data borders and coastlines
 world <- ne_countries(scale = "medium", returnclass = "sf") # Borders of the countries
@@ -93,7 +95,7 @@ coastline <- ne_download(scale = "medium", type = "coastline", category = "physi
 coastline_vect <- vect(coastline) # Convert to spatvector object
 intersected <- terra::intersect(world_vect, coastline_vect) # Get countries list which have coastlines
 countries_with_coastline <- unique(terra::values(intersected)$name)
-
+rm(intersected)
 
 # Call the object 'regions' to have the countries names (spell them right)
 regions <- sort(regions) # Sort by alphabetical order
@@ -170,32 +172,34 @@ region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
 
 
 # For all countries
+# buffered_regions <- readRDS("buffered_regions.rds")
 buffered_regions <- list()
-
 for(i in seq_along(regions)){
   # Isolate region geometry
   region <- world_vect[world_vect$name == regions[i], ]
-  
+
   if(regions[i] %in% countries_with_coastline){
     # Draw polygon from coastline
     intersect <- terra::intersect(coastline_vect, region)
-    
+
     # Crop coastline in targeted area
     crop <- crop(region, intersect)
-    
+
     # Add a buffer everywhere following the border
     buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
-    
+
     # Combine Geometries
     combined <- combineGeoms(region, buffer)
-    
+
     # Crop raster
     buffered_regions[i] <- combined
-    
+
   } else {
     buffered_regions[i] <- region
   }
-}
+} # A bit long (import object) ; but when import object, session aborts
+
+rm(intersect, crop, buffer) ; gc()
 
 buffered_regions_vect <- vect(buffered_regions) # Combine the list of spatvectors into 1 spatvector
 # plot(buffered_regions[[40]]) # Check if works individually
@@ -211,19 +215,83 @@ buffered_regions_vect <- vect(buffered_regions) # Combine the list of spatvector
 # See if there are pb also with cropping per country the data (missing data that are not inlands)
 # world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
 # plot(world2)
-library(SeaVal) # Add countries names according to coordinates
+library(SeaVal) # Add countries names according to coordinates (DOES NOT WOOOORK)
+
+
+##############################*
+##############################*
+
+buffered_regions2 <- list()
+coastline_vect2 <- as_sf(coastline_vect)
+
+for (i in seq_along(regions)) {
+  region <- world_vect[world_vect$name == regions[i], ]
+  
+  if (regions[i] %in% countries_with_coastline) {
+    intersect <- st_intersection(coastline_vect, region)
+    crop <- st_crop(region, st_bbox(intersect))
+    buffer <- st_buffer(crop, 22000) # Appliquer un buffer de 22km sur toutes les côtes
+    combined <- st_union(region, buffer)
+    buffered_regions2[[i]] <- combined
+  } else {
+    buffered_regions2[[i]] <- region
+  }
+}
+
+
+# Avoid overlaps in buffers
+combined_regions <- do.call(st_sfc, buffered_regions2)
+
+
+
+
+
+# Test new method:
+
+points_sf <- st_as_sf(bg_df, coords = c("x", "y"), crs = 4326)
+
+# Check if there are any overlaps in the different geometries
+int <- relate(buffered_regions_vect, buffered_regions_vect, "intersects")
+ind <-  which(int == TRUE)
+inter <- int[ind]
+
+# Make the geometries valid
+countries <- st_make_valid(buff_countries)
+plot(countries$geometry[101])
+plot(buff_countries$geometry[103]) # Check if helps
+
+# Fonction pour effectuer le reverse geocoding
+reverse_geocode <- function(point, polygons) {
+  # Trouver le pays contenant le point
+  country <- polygons[st_contains(polygons, point, sparse = FALSE), ]
+  if (nrow(country) == 0) {
+    return(NA)  # Si aucun pays ne contient le point
+  } else {
+    return(country$country_name)  # Assurez-vous que le nom du pays est dans une colonne appelée "country_name"
+  }
+}
+
+# Appliquer la fonction à chaque point
+coords$country <- sapply(1:nrow(points_sf), function(i) reverse_geocode(points_sf[i, ], countries))
+
+##############################*
+##############################*
+
+
+
 
 # Normally, with "world" object (in add_country_names) but we need the corrected geometries on the coast
-buff_countries <- as_sf(buffered_regions_vect)
+buff_countries <- as_sf(buffered_regions_vect) # We do have the changed geometries
+# plot(buff_countries$geometry[31]) # Example with Brazil
 
 # Add countries column in full bg dataframe....
 bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
 bg_df2 <- as.data.table(bg_df2)
-bg_df2 <- add_country_names(bg_df2, regions = buff_countries) # With SeaVal package
+bg_df2 <- add_country_names(bg_df2, regions = countries_filtered) # With SeaVal package
 bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
 bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
 # rm(bg_df) ; gc() # Clean memory (CM)
-bg_df2 <- na.omit(bg_df2, cols = "country")
+bg_df2 <- na.omit(bg_df2, cols = "country") # Remove NAs in the "country" column
 
 # ...AND aquaspecies dataframe 
 # Add countries
@@ -232,7 +300,8 @@ aq_df2 <- as.data.table(aq_df2)
 aq_df2 <- add_country_names(aq_df2, regions = buff_countries)
 aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
 aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
-# rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
+aq_df2 <- na.omit(aq_df2, cols = "country") # Remove NAs in the "country" column
+rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
 
 
 # Select subset of the targeted country for aquaculture species
@@ -251,17 +320,72 @@ aq_df_occ <- aq_df2 %>% # Get species occurrences for all countries (> threshold
   tidyterra::filter(n() >= OCC) %>% 
   ungroup()
 rm(aq_df2) ; gc()
-occurences2 <- table(aq_df_occ$species) # Check if threshold respected
+# occurences2 <- table(aq_df_occ$species) # Check if threshold respected
 # print(occurences2) # OK, 147 species
 # length(occurences2)
 
+list_species <- unique(aq_df_occ$species)
+
+
+#######################################*
+#######################################*
+# GET NUMBER OF SPECIES THAT OCCUR >5, 10, 20 TIMES IN THE GRID
+
+# Replace countries names that don't match with "world" data (for future function use)
+which(regions %in% countries_filtered )
+
+nb_occ <-  list()
+for(i in seq_along(list_species)){ 
+  ## SPECIES DATA
+  aq_df_sp <- aq_df_occ %>% # Get species of interest's GBIF data
+    tidyterra::filter(species == list_species[1])
+  spbg <- sample_background(bg_df = bg_df2, sp = list_species[1]) # Get sample GBIF data acording to the species' country location
+  aq_df_sp$PA <- 1 
+  spbg$PA <- 0 # Add presence absence column
+  spPA <- rbind(aq_df_sp, spbg) # Bind both
+  
+  ## ENV DATA
+  countries_filtered <- unique(bg_df2$country[bg_df2$species == list_species[1]])
+  env_crop <- lapply(X = countries_filtered[1], FUN = function(X){ # Crop to list of countries where species occurr
+    GetCroppedRaster(list_raster = env_var, extent = X) 
+  })
+  env_crop <- unlist(env_crop) ; gc()
+  # rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
+  # rm(env_var) ; gc()
+  env_rs <- list()
+  for (j in seq_along(env_crop)) { # Resample
+    env_rs[[j]] <- resample(env_crop[[i]], BASE, "bilinear") # OK
+  }
+  rm(env_crop) ; gc()
+  env_df <- list()
+  for (i in seq_along(env_rs)) { # Convert into dataframe
+    env_df[[i]] <- as.data.frame(env_rs[[i]], xy = TRUE) # Very long.... OPTIMIZE
+  }
+  rm(env_rs) ; gc()
+  count_nb <- length(unique(spPA$country)) # # Merge (+ cell ID)
+  
+  
+  
+}
+
+
+#######################################*
+#######################################*
+
+
+
+
+
+
 # Target 1 species
-SPECIES <-  "Carassius auratus" # Here example of species present in China (we don't know where else it's present)
+SPECIES <-  "Carassius auratus" # (Goldfish, freshwater fish = inland points) 'commercial' for aquaculture but does not say if it's for human consumption
+# Here example of species present in China (we don't know where else it's present)
 aq_df_sp <- aq_df_occ %>% 
   tidyterra::filter(species == SPECIES) # Filter only the species of interest
 
 
-# Visualize the points of the targeted species in India
+# Visualize the points of the targeted species in the region of interest
+region <- world_vect[world_vect$name == name_reg, ]
 reg <- ext(region)
 ggplot(data = world) +
   geom_sf(color = "black") +
@@ -272,10 +396,8 @@ ggplot(data = world) +
   geom_point(data = aq_df_sp, aes(x = x, y = y), size = 2,  # Put the dots from the species filtered subdataframe
              shape = 21, fill = "green") 
 
-# Looks very much in the country so does not make sense that I'm missing the data in the final dataframe... pb of matching?
-# Only 5 points appear out of 9.
 
-# In the world
+# In the world (All)
 # ggplot(data = world) +
 #   geom_sf(color = "black") +
 #   geom_sf(fill = "antiquewhite1") +
@@ -305,6 +427,9 @@ sample_background <- function(bg_df, sp){ # Modify conditions about including NA
 }
 
 spbg <- sample_background(bg_df = bg_df2, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
+# Here, only 4054 data but checked 
+
+
 
 # Visualize background points
 ggplot(data = world) +
@@ -324,17 +449,30 @@ aq_df_sp$PA <- 1
 # Merge the species dataframes (presence/absence df)
 spPA <- rbind(aq_df_sp, spbg)
 
+##########################*
+##########################*
+spPA2 <- distinct(spPA) # Delete redundant rows
+length(spPA2$species)
+##########################*
+##########################*
+
+
+rm(spbg, aq_df_sp, aq_df_occ, aquaspecies_df, bg_df, bg_df2, coastline, coastline_vect) ; gc()
+
 # Visualize (check where are the dots compared to the species of interest)
+# [1:48,]
 ggplot(data = world) +
   geom_sf(color = "black") +
   geom_sf(fill = "antiquewhite1") +
   theme_minimal() +
   theme(panel.background = element_rect(fill = 'light blue'))+
-  geom_point(data = spPA, aes(x = x, y = y, fill = factor(PA)), size = 2,  # Utilisez factor(PA) pour traiter PA comme une catégorie
+  geom_point(data = spPA[1:48,], aes(x = x, y = y, fill = factor(PA)), size = 2,  # Utilisez factor(PA) pour traiter PA comme une catégorie
              shape = 21) +
   scale_fill_manual( name = "Presence/Absence", values = c("0" = "red", "1" = "green")) + 
-  ggtitle(label = paste0("Species background location points in the area of distribution of", SPECIES)) +
+  ggtitle(label = paste0("Species background location points in the area of distribution of ", SPECIES)) +
   theme(legend.title = element_text(size = 9), title = element_text(size = 10))
+
+# Pb dots overlay, not that much of a concern, only bad rendering
 
 #### ENVIRONMENTAL DATA ####
 
@@ -348,9 +486,9 @@ env_crop <- lapply(X = countries_filtered, FUN = function(X){
 
 env_crop <- unlist(env_crop) ; gc()
 
-# env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRIES) # "Empty geometry" line if country misspelled
-# rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
-# rm(env_var)
+# env_crop <- GetCroppedRaster(list_raster = env_var, extent = COUNTRY) # "Empty geometry" line if country misspelled
+rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
+rm(env_var) ; gc()
 # plot(env_crop[[20]]) # Check
 
 # Resample: adapt all raster geometry (resolution) to one reference raster
@@ -358,7 +496,7 @@ env_rs <- list()
 for (i in seq_along(env_crop)) {
   env_rs[[i]] <- resample(env_crop[[i]], BASE, "bilinear") # OK
 }
-rm(env_crop2) ; gc()
+rm(env_crop) ; gc()
 
 
 # Convert into dataframe
@@ -368,10 +506,14 @@ for (i in seq_along(env_rs)) {
 }
 rm(env_rs) ; gc()
 
-test <- unlist(env_df)
+
+# # Merge (+ cell ID)
+count_nb <- length(unique(spPA$country))
+df_list <- env_df
+group_size <- length(env_df) / count_nb
 
 # Merge (+ cell ID)
-GetMerged <- function(df_list, group_size = 10) {
+GetMerged <- function(df_list, group_size) {
   merged_list <- list()
   num_groups <- ceiling(length(df_list) / group_size)
   
@@ -384,18 +526,99 @@ GetMerged <- function(df_list, group_size = 10) {
   }
   
   # Fusionner tous les groupes ensemble
-  final_merged <- reduce(merged_list, ~ full_join(.x, .y, by = c("x", "y")))
+  # final_merged <- reduce(merged_list, ~ full_join(.x, .y, by = c("x", "y")))
+  # final_merged <- reduce(merged_list, rbind)
   
-  return(final_merged)
+  return(merged_list)
 }
-env_mg <- GetMerged(df_list = env_df, group_size = length(env_df))
-rm(env_df) ; gc()
+
+env_mg <- GetMerged(df_list = env_df, group_size = length(env_df)/count_nb)
 
 
 ### MERGE ALL ###
-dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE) # Add environmental data
+# dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE) # Add environmental data (does not work)
+
+final <- env_mg[[1]]
+sp <- spPA2
+base <- env_var[[1]]
+plot(base)
+
+GetCombinedDf <- function(final, sp, base) {
+  coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
+  s_sp <- cellFromXY(base, xy = coord) 
+  coord2 <- matrix(c(final$x, final$y), ncol = 2) # Coordinates from env df
+  s_env <- cellFromXY(base, xy = coord2)
+  
+  # Target mismatches between the two dataframes
+  pos <- which(!s_sp %in% s_env) # Check if there are still data outside range 
+  if(length(pos) > 0) {
+    s_sp <- s_sp[-pos] 
+    sp <- sp[-pos,]
+  }
+  
+  p <- which(!is.na(s_sp)) # Select only non NA data
+  final$species <- NA
+  final$PA <- NA
+  final$country <- NA
+  final$Aquaculture_status <- NA # Create new columns in final dataframe
+  
+  index <- tapply(1:length(s_env), s_env, function(x) {return(x)}) # Create named array 
+  rn <- index[as.character(s_sp[p])] # Select in index the ID of the GBIF location
+  
+  # Get final dataframe
+  final$species[rn] <- sp$species[p] # Add species column
+  final$PA[rn] <- sp$PA[p] # Add presence/absence column
+  # length(which(!is.na(final$PA)))
+  
+  # Add country column, ensuring NA values are retained
+  final$country[rn] <- sp$country[p]
+  
+  # Add aquaculture status column, ensuring NA values are retained
+  final$Aquaculture_status[rn] <- sp$Aquaculture_status[p]
+  
+  return(final)
+}
+
+# f2 <- final[rn,]
+# f2$species <- sp$species[p]
+# f2$PA <- sp$PA[p]
+# f2$country <- sp$country[p]
+# f2$Aquaculture_status <- sp$Aquaculture_status[p]
+
+
+## FOR CHINA
+s <- spPA2[spPA2$country == countries_filtered[1],] # All species data for China
+s2 <- s[s$PA ==1,] # Only presence data
+
+
+t <- env_mg[[1]] # Environmental dataframe for China
+# t2 <- rast(t)
+# plot(t2[[25]]) # Check if it works
+
+d <- GetCombinedDf(final = t, sp = s2, base = base) # Combine env + sp dataframes for China
+length(which(d$PA == 1)) # See if it worked
+
+
+
+### FOR ALL COUNTRIES (complete later when issue with multiple species solved)
+# d2 <- GetCombinedDf(final = final, sp = s, base = base) 
+# 
+# dat <- list()
+# for(i in seq_along(env_mg)){
+#   dat[[i]] <- GetCombinedDf(final = env_mg[[i]], sp = spPA, base = base) # Add environmental data
+# }
+# 
+# dat2 <- reduce(dat, rbind) # Get one final dataframe
+
+
+
+
+
+
+
 
 # Plus l'impression que tout ca soit utile
+
 # Generate per species the equation
 # get_species_df <- function(speciesname, unique_sp) {
 #   # Sélectionner le subset pour l'espèce donnée dans aquaspecies_df
@@ -416,16 +639,10 @@ dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE) # Add environmental
 #   return(df)
 # }
 
-# PAS TOTALEMENT CORRECT CAR APPEL DES ESPECES BACKGROUND PAR NOM AU LIEU DE LOCATION
-# CE QUI VEUT DIRE APPEL DE TOUTES LES LOCALISATIONS OU LES ESPECES BACKGROUND SONT 
-# ET NON JUSTE CELLES D'INTERET (pays de l'espèce ciblee)
-
 # Test
 # sp_comb_df <- get_species_df(SPECIES, unique_species) # OK
 
 # Call this function in a loop for species dataframes
-
-
 # Get environmental data for areas targeted
 # get_crop_env <- function(species_names, count_per_sp){
 #   for(i in seq_along(species_names)){
@@ -443,9 +660,6 @@ dat <- GetCombinedDf(final = env_mg, sp = spPA, base = BASE) # Add environmental
 #   return(rast_ext)
 # }
 # 
-
-
-
 
 
 
