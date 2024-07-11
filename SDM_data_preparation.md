@@ -303,3 +303,7 @@ plot(coastal_buffer_vect, col = "red", add = TRUE, alpha = 0.5)
 # coastal_buffer_vect est maintenant un SpatVecteur avec le buffer appliqué aux frontières côtières
 
 ```
+
+
+Issues with buffer : overlaps or merge not complete
+![alt text](image-1.png) (example of Cameroon)
