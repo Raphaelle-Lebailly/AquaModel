@@ -1,0 +1,376 @@
+<!DOCTYPE html><html><head>
+      <title>SDM_data_preparation</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="file:///c:\Users\User\.vscode-oss\extensions\shd101wyy.markdown-preview-enhanced-0.8.13-universal\crossnote\dependencies\katex\katex.min.css">
+      
+      
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <!-- The content below will be included at the end of the <head> element. --><script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script></head><body for="html-export">
+    
+    
+      <div class="crossnote markdown-preview  ">
+      
+<h1 id="preparation-of-the-data-for-sdm">Preparation of the Data for SDM </h1>
+<p>This document is a guide to understand the organization of the <strong>Aquaculture project's Species Distribution Models</strong> scripts.</p>
+<p>The script is organized as such:</p>
+<pre class="language-text">I. Preparation of the Data
+      a. World Data 
+      b. Species Data
+      c. Environmental Data
+II. Data Merge
+III. SDM
+</pre>
+<hr>
+<h3 id="i-data-preparation">I. Data preparation </h3>
+<p><strong>Variables</strong></p>
+<ul>
+<li>Verify data collinearity: threshold pairwise correlation coefficient value of |r| &gt; .7</li>
+<li>Standardization of the data to a mean of 0 and SD of 1</li>
+</ul>
+<h3 id="1-world-data">1. World data </h3>
+<p>The goal is to generate the countries' new geometry. We want to take into account about 22km of the coasts in the country's border geometry, in order to retreive the fish occurrences near the coasts.</p>
+<p>To do so, we use the 'terra' package with this function:</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>buffered_regions &lt;- list()
+
+for(i in seq_along(regions)){
+  # Isolate region geometry
+  region &lt;- world_vect[world_vect$name == regions[i], ]
+  if(regions[i] %in% countries_with_coastline){
+    # Draw polygon from coastline
+    intersect &lt;- terra::intersect(coastline_vect, region)
+    # Crop coastline in targeted area
+    crop &lt;- terra::crop( region, intersect)
+    # Add a buffer everywhere following the border
+    buffer &lt;- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+    # Combine Geometries
+    combined &lt;- combineGeoms(region, buffer)
+    # Aggregate everything that overlaps in the assembled coast and country SpatVector
+    combined_polygons &lt;- aggregate(combined, dissolve = TRUE)
+    # Add buffered object
+    buffered_regions[i] &lt;- combined_polygons
+  } else {
+    buffered_regions[i] &lt;- region
+  }
+} 
+
+buffered_regions_vect &lt;- vect(buffered_regions) # FINAL SPATVECTOR OBJECT  
+</code></pre><p>We end up with countries with buffered coasts and normal geometry (e.g. Canada below):<br>
+<img src="image-2.png" width="250" height="200"> <img src="image-3.png" width="250" height="200"></p>
+<p><span style="color:#f53d49;"> ISSUE: The polygons that overlap for 1 country end up merging successfully, but not for multiple countries.  </span></p>
+<h3 id="2-species-data">2. Species data </h3>
+<p>After loading the data with the real_bg.rds file and 'rfishbase' package, we need to match the data to the countries' new geometries that act like molds.</p>
+<p>To do so, we want to <strong>associate the new geometry to the countries name</strong>, and use this information to do the reverse geolocation.</p>
+<p><strong>Reverse geolocation</strong> is the process of finding an adress from coordinates. In our case, the country name.</p>
+<p>We need to match up GBIF species occurences coordinates to countries in order to match the targeted species we study to its background data.</p>
+<p>If the targeted species is in India, China, Vietnam and Erytrea, we need to do a sampling of background species present in these countries (with a maximum threshold of 10,000 backgound data).</p>
+<p>Because we did match the coordinates to the new countries geometry (the buffered one on the coast), we will be able to match species coordinates that are off the coast within 22km to the country in question.</p>
+<p><ins>Steps in diagram:</ins><br>
+<img src="reverse_geolocation_steps-1.png" alt="alt text"></p>
+<h4 id="21-clean-the-data">2.1 Clean the data </h4>
+<p>Cleaning the data allows to have a dataset without irrelevant values.<br>
+For that, we use the package 'CoordinateCleaner'.</p>
+<p>We also use the 'distinct' function in order to clean up the repeted rows (same coordinates and same species). The reason we have repeted rows is the fact that we might have same observations for different years. Since we work on a period of time and the year isn't that relevant, we do not include it in the data.</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>Getflag &lt;- function(data){
+  # Replace alpha-2 with alpha-3
+  indices &lt;- match(data$countryCode, countcode$a2)
+  data$countryCode &lt;- countcode$a3[indices]
+  # Flags
+  flags &lt;- clean_coordinates(x = data, 
+                                lon = "decimalLongitude", 
+                                lat = "decimalLatitude",
+                                countries = "countryCode",
+                                species = "species",
+                                tests = c("countries"))
+  return(flags)
+}
+
+data &lt;- distinct(data)
+</code></pre><h4 id="22-reverse-geolocation">2.2 Reverse Geolocation </h4>
+<p>For the moment, I use the package 'SeaVal' to do the reverse location, but turns out I can't change the reference data for the countries, so I can't add my own data with my changed geometries (i.e. if a point falls on the coast within the buffer, it won't associate it with the nearest country, at least for now).</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>buff_countries &lt;- as_sf(buffered_regions_vect) # We do have the changed geometries
+# plot(buff_countries$geometry[31]) # Example with Brazil
+
+# Add countries column in full bg dataframe....
+bg_df2 &lt;- tidyterra::rename(bg_df, lon = x, lat = y)
+bg_df2 &lt;- as.data.table(bg_df2)
+bg_df2 &lt;- add_country_names(bg_df2, regions = buff_countries) # With SeaVal package
+bg_df2$country &lt;- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
+bg_df2 &lt;- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+# rm(bg_df) ; gc() # Clean memory (CM)
+bg_df2 &lt;- na.omit(bg_df2, cols = "country") # Remove NAs in the "country" column
+
+# ...AND aquaspecies dataframe 
+# Add countries
+aq_df2 &lt;- tidyterra::rename(aquaspecies_df, lon = x, lat = y)
+aq_df2 &lt;- as.data.table(aq_df2)
+aq_df2 &lt;- add_country_names(aq_df2, regions = buff_countries)
+aq_df2$country &lt;- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
+aq_df2 &lt;- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+aq_df2 &lt;- na.omit(aq_df2, cols = "country") # Remove NAs in the "country" column
+rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
+
+</code></pre><h3 id="3-environmental-data">3. Environmental data </h3>
+<ul>
+<li>Chosing the right resolution</li>
+</ul>
+<h4 id="31-resample">3.1 Resample </h4>
+<p>The different layers need to have the same geometry to be projected in the same grid. Therefore, the 'resample' function, of the package 'terra' is used in order to adapt one SpatRaster's geometry to another's.</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>resample(layer_raw, layer_base, "method")
+</code></pre><p>The method will depend on the nature of the variable itself.</p>
+<ul>
+<li>
+<p>Nearest neighbor: <strong>Discrete</strong></p>
+</li>
+<li>
+<p>Majority: <strong>Discrete</strong></p>
+</li>
+<li>
+<p>Bilinear: <strong>Continuous</strong></p>
+</li>
+<li>
+<p>Cubic: <strong>Continuous</strong></p>
+<pre class="language-text">  layer.rsp
+</pre>
+</li>
+</ul>
+<p>For the moment, we chose the bilinear method.</p>
+<p><strong>Snap to grid</strong></p>
+<p>Snap to grid is useful to adapt every layer to the same skeleton scaffold.<br>
+Other method if resample() is not used.</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>SnapToGrid &lt;- function(layer){
+  df &lt;- as.data.frame(layer,xy=T) # Use the xy dataframe and append the (x,y) values of each cell + index value
+  # Resolution
+  Dim &lt;- dim(layer) 
+  ResX &lt;- Dim[1] # Resolution for x
+  ResY &lt;- Dim[2] # Resolution for y 
+  DimLayer &lt;- list(ResX, ResY)
+  # Extent
+  ext &lt;- ext(layer) # Extent for data (terra object)
+  xmin &lt;- ext$xmin
+  ymin &lt;- ext$ymin
+  xmax &lt;- ext$xmax
+  ymax &lt;- ext$ymax
+  ext.layer &lt;- list(xmin, ymin, xmax, ymax)
+  #Delta
+  deltaX &lt;- (xmax - xmin)/ResX
+  deltaY &lt;- (ymax - ymin)/ResY 
+  # Create grid
+  df$snapX &lt;- as.integer(((df$x-xmin)/deltaX) + 0.5)
+  df$snapY &lt;- as.integer(((df$y-ymin)/deltaY) + 0.5)
+  len &lt;- dim(df)
+  df$index &lt;- seq(1,len[1])
+  # Return
+  return(df)
+  # list(df, DimLayer, ext.layer)
+}
+</code></pre><pre class="language-text">    layer.stg (or final.df)
+</pre>
+<h4 id="32-mean-value">3.2 Mean value </h4>
+<p>The a fine time scale isn't relevant in our case. The values per month are not interesting, so we compute the mean and replace the raw data by a mean value column into the new dataset.</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>mean.df &lt;- function(layer, arg){
+  name.col &lt;- paste0("mean_", arg)
+  # Calculate mean value per row 
+  sub.df.mean1 &lt;-  layer %&gt;%
+    mutate(name.col =  rowMeans(dplyr::select(., contains(arg)), na.rm = FALSE)) 
+  # Subset without raw data
+  sub.df.mean2 &lt;- sub.df.mean1 %&gt;%
+    dplyr::select(., -contains(arg))
+  # Rename column
+  names(sub.df.mean2)[names(sub.df.mean2) == 'name.col'] &lt;- toString(name.col)
+  # Final df
+  return(sub.df.mean2)
+}
+</code></pre><pre class="language-text">    layer.mn
+</pre>
+<h4 id="33-merge-dataframes">3.3 Merge dataframes </h4>
+<p>When the geometry is right for every layer and the mean value is calculated, we want to merge the datasets in order to have all variables in the same space.</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>new.df &lt;- df1 %&gt;%
+  left_joint(df2)
+</code></pre><p><em>use the dplyr package</em>. The common columns are x and y.<br>
+No matter if x and y are different, anyways will be better organized thanks to snap to grid function.</p>
+<pre class="language-text">    layer.mg
+</pre>
+<h4 id="34-plot-the-layers">3.4 Plot the layers </h4>
+<p>To check if it works, we need to have a visual representation of the final dataframe.</p>
+<p><strong>Remark: downloading the data per country for the borders takes a lot of time, maybe try for all of them at once?</strong></p>
+<h3 id="ii-merge-data">II. Merge data </h3>
+<p>When the environmental and species dataframes are ready, we can merge them.</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>Final.df &lt;- function(final, sp){
+  coord &lt;- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
+  s &lt;- cellFromXY(temp.min, xy = coord)
+  p &lt;- which(!is.na(s))
+  s1 &lt;- s[p]
+  final$species &lt;- NA
+  final$species[s1] &lt;- sp$species[p]
+  return(final)
+}
+</code></pre><pre class="language-text">finaldf
+</pre>
+<p>And we can plot by converting it into a Spatraster.</p>
+<p><strong>Species data</strong></p>
+<ul>
+<li>Grid variables (linking environmental data and species data with the same projection):
+<ul>
+<li>Removing records without all the data of each variables</li>
+<li>Removing cells with multiple occurrences</li>
+<li>Standardized cleaning with ‘CoordinateCleaner’ package (<em>removed any records with equal or zero/zero coordinates, found in urban areas, near biodiversity institutions, outside of their listed country, or at the centroids of countries and its subdivisions</em>)</li>
+<li>Selection of the data within the time period of interest</li>
+</ul>
+</li>
+<li>Classification of species occurrences by species type (criteria depending on the contex of the study) and at the chosen point of view and scale (absolute distance, habitat) = ranges</li>
+<li>Remove points with not enough occurrences to avoid overfitting</li>
+</ul>
+<p><strong>Background environment selection</strong><br>
+Fitting of the model with presence background data -&gt; find an adapted method here. Allows to know if there is an overfitting or not. (Generalizable / transferable SDM) --&gt; cf. paper when we are at this part</p>
+<ul>
+<li>‘target-group background’ approach to select the background sites (?)</li>
+</ul>
+<p>At first, need to download the data from fishbase to have the names of the species we want to focus on. We use the 30,000 entries as a baseline for the background and later filter by aquaculture status to run into the SDM.</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code># Background data 
+bg &lt;- fb_tbl("species")
+bg$namesp &lt;- paste(bg$Genus, bg$Species, sep = " ")
+
+
+# saveRDS(bg, file = "fishbase.rds")
+
+summary(bg)
+dim(bg)
+unique(bg$UsedforAquaculture) # Indication on what's used and what has potential
+fish_sp &lt;- bg$namesp # Vector with species names for all fishes
+distrifish &lt;- rgbif::occ_data(scientificName = fish_sp)
+
+saveRDS(distrifish, file = "fishbase.rds") # Save GBIF data to save time
+
+</code></pre><p><strong>Modelling Species Distribution</strong><br>
+Here, two modelling approaches, but depends on the context. --&gt; Cf. paper</p>
+<pre class="language-text">Know what model to use before preparing the data??
+</pre>
+<p>--&gt; see the rest later.</p>
+<p>Importing the aquaculture species</p>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code>bg_aqua &lt;- bg %&gt;%
+  tidyterra::filter(UsedforAquaculture == "commercial")
+dim(bg_aqua) # 358 entries
+# Add column with both genus and species name
+bg_aqua$namesp &lt;- paste(bg_aqua$Genus, bg_aqua$Species, sep = " ")
+unique(bg_aqua$namesp)
+# Retrieve this as a vector
+aq_sp &lt;- bg_aqua$namesp
+# Import distribution data for this list of species (GBIF or FishBase?)
+dist_aqua &lt;- rgbif::occ_data(scientificName = aq_sp)
+saveRDS(dist_aqua, file = "aquafish.rds")
+</code></pre><p>Here, 357 species under the label "commercial" have been imported according to the "used in aquaculture" variable.</p>
+<p>Now, I need to combine all of the species into one dataframe. Instead of having a column for each species, we'll have a column 'species' with multiple times the locations where we find the species, so that the dimensions are smaller than the previous method.</p>
+<h1 id="references">References </h1>
+<p>Nguyen &amp; Leung, 2022</p>
+<hr>
+<h1 id="list-of-things-to-do">List of things to do </h1>
+<h2>Raph:</h2>
+<ul>
+<li>Look for freshwater environmental data. Lakes and rivers.</li>
+<li><em>How to handle different water bodies</em> * --&gt; 2 options. 1. differentiate the water bodies OR 2. apply filters. How to overlay environmental variable and physical structures (Lakes)</li>
+<li>Apply some sort of buffer to handle coastal species. Keep species occurrences from 22kms from the coast (~ 7 cells). Only for borders touching the sea and not the land.</li>
+</ul>
+<p>Maia:</p>
+<ul>
+<li>What's done in aquaculture concerning lakes</li>
+<li>Nutrition --&gt; establish a scaling per fish and per nutrient</li>
+</ul>
+<p>Overall --&gt; link / quantify fish with needs.</p>
+<p>Ideas:</p>
+<ul>
+<li>Estimate areas where species can live &gt; a threshold, count the nb of cells that represents and translate in terms of area covered. =&gt; 1rst step to estimate a "quantity" or "how much" a species can be grown in a country.</li>
+<li></li>
+</ul>
+<p>Keep in mind (project and report prospects)</p>
+<ul>
+<li>The resolution influences the predictive performance of a SDM. The link isn't proportional, which highliths the presence of an optimum. Depends on the species. (Lowen, 2016)</li>
+<li>Definition of pseudoabsences and why they are useful. 1. Assess a better model with more accurate coefficients (look into details to be sure) 2. Assess the differences of sampling effort over all area of distribution.</li>
+</ul>
+<p>Questions:</p>
+<ul>
+<li>What about GBIF data that covers 1873-2019 (with species data way more important in 1960's - 1980's)</li>
+<li>How to quantify fish depending on needs and how geographic data is interesting to implement concretely?</li>
+</ul>
+<p><img src="image.png" alt="alt text"></p>
+<h1 id="get-coastal-data">Get coastal data </h1>
+<pre data-role="codeBlock" data-info="{r}" class="language-text"><code># Installer et charger les packages nécessaires
+install.packages("rnaturalearth")
+install.packages("sf")
+install.packages("terra")
+install.packages("dplyr")
+
+library(rnaturalearth)
+library(sf)
+library(terra)
+library(dplyr)
+
+# Télécharger les données des pays et des côtes
+world &lt;- ne_countries(scale = "medium", returnclass = "sf")
+coastline &lt;- ne_download(scale = "medium", type = "coastline", category = "physical", returnclass = "sf")
+
+# Convertir en SpatVecteur de terra
+world_vect &lt;- vect(world)
+coastline_vect &lt;- vect(coastline)
+
+# Convertir en sf pour les opérations géospatiales
+world &lt;- st_as_sf(world)
+coastline &lt;- st_as_sf(coastline)
+
+# Créer un buffer autour des côtes pour capturer les frontières côtières
+coastline_buffer &lt;- st_buffer(coastline, dist = 0.01)
+
+# Intersecter les pays avec le buffer des côtes pour obtenir les frontières côtières
+coastal_boundaries &lt;- st_intersection(world, coastline_buffer)
+
+# Extraire les frontières terrestres en soustrayant les frontières côtières des frontières totales
+land_boundaries &lt;- st_difference(world, coastline_buffer)
+
+# Convertir les résultats en SpatVecteur de terra
+coastal_boundaries_vect &lt;- vect(coastal_boundaries)
+land_boundaries_vect &lt;- vect(land_boundaries)
+
+# Visualiser les pays avec leurs frontières côtières et terrestres
+plot(world_vect, col = "gray")
+lines(coastal_boundaries_vect, col = "blue", lwd = 2)
+lines(land_boundaries_vect, col = "green", lwd = 2)
+
+# Appliquer un buffer uniquement aux frontières côtières
+coastal_buffer &lt;- st_buffer(coastal_boundaries, dist = 0.01)
+coastal_buffer_vect &lt;- vect(coastal_buffer)
+
+# Visualiser le buffer appliqué aux frontières côtières
+plot(world_vect, col = "gray")
+lines(coastal_boundaries_vect, col = "blue", lwd = 2)
+lines(land_boundaries_vect, col = "green", lwd = 2)
+plot(coastal_buffer_vect, col = "red", add = TRUE, alpha = 0.5)
+
+# coastal_buffer_vect est maintenant un SpatVecteur avec le buffer appliqué aux frontières côtières
+
+</code></pre><p>Issues with buffer : overlaps or merge not complete<br>
+<img src="image-1.png" alt="alt text"> (example of Cameroon)</p>
+
+      </div>
+      
+      
+    
+    
+    
+    
+    
+    
+  
+    </body></html>
