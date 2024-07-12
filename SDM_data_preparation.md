@@ -1,15 +1,137 @@
 # Preparation of the Data for SDM 
 
+This document is a guide to understand the organization of the **Aquaculture project's Species Distribution Models** scripts.  
 
-### Variables
+The script is organized as such:
+
+    I. Preparation of the Data
+          a. World Data 
+          b. Species Data
+          c. Environmental Data
+    II. Data Merge
+    III. SDM
+
+---------------------------------------------------------------
+
+### I. Data preparation
+
+**Variables**
 - Verify data collinearity: threshold pairwise correlation coefficient value of |r| > .7
 - Standardization of the data to a mean of 0 and SD of 1
 
-### 1. Environmental data
+### 1. World data
+The goal is to generate the countries' new geometry. We want to take into account about 22km of the coasts in the country's border geometry, in order to retreive the fish occurrences near the coasts. 
+
+To do so, we use the 'terra' package with this function:
+```{r}
+buffered_regions <- list()
+
+for(i in seq_along(regions)){
+  # Isolate region geometry
+  region <- world_vect[world_vect$name == regions[i], ]
+  if(regions[i] %in% countries_with_coastline){
+    # Draw polygon from coastline
+    intersect <- terra::intersect(coastline_vect, region)
+    # Crop coastline in targeted area
+    crop <- terra::crop( region, intersect)
+    # Add a buffer everywhere following the border
+    buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+    # Combine Geometries
+    combined <- combineGeoms(region, buffer)
+    # Aggregate everything that overlaps in the assembled coast and country SpatVector
+    combined_polygons <- aggregate(combined, dissolve = TRUE)
+    # Add buffered object
+    buffered_regions[i] <- combined_polygons
+  } else {
+    buffered_regions[i] <- region
+  }
+} 
+
+buffered_regions_vect <- vect(buffered_regions) # FINAL SPATVECTOR OBJECT  
+```
+
+We end up with countries with buffered coasts and normal geometry (e.g. Canada below):
+<img src="image-2.png" width=250 height=200> <img src="image-3.png" width=250 height=200>
+
+
+<span style="color:#f53d49;"> ISSUE: The polygons that overlap for 1 country end up merging successfully, but not for multiple countries.  </span>
+
+
+### 2. Species data
+After loading the data with the real_bg.rds file and 'rfishbase' package, we need to match the data to the countries' new geometries that act like molds.
+
+To do so, we want to **associate the new geometry to the countries name**, and use this information to do the reverse geolocation. 
+
+**Reverse geolocation** is the process of finding an adress from coordinates. In our case, the country name. 
+
+We need to match up GBIF species occurences coordinates to countries in order to match the targeted species we study to its background data. 
+
+If the targeted species is in India, China, Vietnam and Erytrea, we need to do a sampling of background species present in these countries (with a maximum threshold of 10,000 backgound data). 
+
+Because we did match the coordinates to the new countries geometry (the buffered one on the coast), we will be able to match species coordinates that are off the coast within 22km to the country in question. 
+
+<ins>Steps in diagram:</ins>
+![alt text](reverse_geolocation_steps-1.png)
+
+#### 2.1 Clean the data
+Cleaning the data allows to have a dataset without irrelevant values. 
+For that, we use the package 'CoordinateCleaner'. 
+
+We also use the 'distinct' function in order to clean up the repeted rows (same coordinates and same species). The reason we have repeted rows is the fact that we might have same observations for different years. Since we work on a period of time and the year isn't that relevant, we do not include it in the data.
+
+```{r}
+Getflag <- function(data){
+  # Replace alpha-2 with alpha-3
+  indices <- match(data$countryCode, countcode$a2)
+  data$countryCode <- countcode$a3[indices]
+  # Flags
+  flags <- clean_coordinates(x = data, 
+                                lon = "decimalLongitude", 
+                                lat = "decimalLatitude",
+                                countries = "countryCode",
+                                species = "species",
+                                tests = c("countries"))
+  return(flags)
+}
+
+data <- distinct(data)
+```
+
+#### 2.2 Reverse Geolocation
+
+For the moment, I use the package 'SeaVal' to do the reverse location, but turns out I can't change the reference data for the countries, so I can't add my own data with my changed geometries (i.e. if a point falls on the coast within the buffer, it won't associate it with the nearest country, at least for now).
+
+```{r}
+buff_countries <- as_sf(buffered_regions_vect) # We do have the changed geometries
+# plot(buff_countries$geometry[31]) # Example with Brazil
+
+# Add countries column in full bg dataframe....
+bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
+bg_df2 <- as.data.table(bg_df2)
+bg_df2 <- add_country_names(bg_df2, regions = buff_countries) # With SeaVal package
+bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
+bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+# rm(bg_df) ; gc() # Clean memory (CM)
+bg_df2 <- na.omit(bg_df2, cols = "country") # Remove NAs in the "country" column
+
+# ...AND aquaspecies dataframe 
+# Add countries
+aq_df2 <- tidyterra::rename(aquaspecies_df, lon = x, lat = y)
+aq_df2 <- as.data.table(aq_df2)
+aq_df2 <- add_country_names(aq_df2, regions = buff_countries)
+aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
+aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
+aq_df2 <- na.omit(aq_df2, cols = "country") # Remove NAs in the "country" column
+rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
+
+```
+
+
+### 3. Environmental data
 - Chosing the right resolution
 
 
-#### 1.1 Resample
+#### 3.1 Resample
 
 The different layers need to have the same geometry to be projected in the same grid. Therefore, the 'resample' function, of the package 'terra' is used in order to adapt one SpatRaster's geometry to another's. 
 
@@ -63,7 +185,7 @@ SnapToGrid <- function(layer){
         layer.stg (or final.df)
 
 
-#### 1.2 Mean value
+#### 3.2 Mean value
 
 The a fine time scale isn't relevant in our case. The values per month are not interesting, so we compute the mean and replace the raw data by a mean value column into the new dataset. 
 
@@ -84,7 +206,7 @@ mean.df <- function(layer, arg){
 ```
         layer.mn
 
-#### 1.3 Merge dataframes
+#### 3.3 Merge dataframes
 
 When the geometry is right for every layer and the mean value is calculated, we want to merge the datasets in order to have all variables in the same space.
 
@@ -98,35 +220,14 @@ No matter if x and y are different, anyways will be better organized thanks to s
         layer.mg
 
 
-#### 1.4 Plot the layers
+#### 3.4 Plot the layers
 
 To check if it works, we need to have a visual representation of the final dataframe. 
 
 **Remark: downloading the data per country for the borders takes a lot of time, maybe try for all of them at once?**
 
-### 2. Species data
 
-#### 2.1 Clean the data
-Cleaning the data allows to have a dataset without irrelevant values. 
-For that, we use the package 'CoordinateCleaner'. 
-
-```{r}
-Getflag <- function(data){
-  # Replace alpha-2 with alpha-3
-  indices <- match(data$countryCode, countcode$a2)
-  data$countryCode <- countcode$a3[indices]
-  # Flags
-  flags <- clean_coordinates(x = data, 
-                                lon = "decimalLongitude", 
-                                lat = "decimalLatitude",
-                                countries = "countryCode",
-                                species = "species",
-                                tests = c("countries"))
-  return(flags)
-}
-```
-
-### 3. Merge data
+### II. Merge data
 When the environmental and species dataframes are ready, we can merge them. 
 
 ```{r}
@@ -213,6 +314,8 @@ Now, I need to combine all of the species into one dataframe. Instead of having 
 # References
 Nguyen & Leung, 2022
 
+
+-------------------------------------------------------------------------
 
 # List of things to do
 

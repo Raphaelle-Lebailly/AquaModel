@@ -6,6 +6,7 @@ library(mgcv)
 setwd("C:/Users/User/Desktop/Internship/Data") # Download and load data (!!! LOCAL ADRESS)
 source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Load functions
 
+
 #### ENVIRONMENTAL DATA ####
 ## Download
 pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
@@ -80,7 +81,7 @@ rm(sp_fb) ; gc()
 bg_df <- distinct(bg_df)
 # Retrieve species with non NA aquaculture status
 aquaspecies_df <- na.omit(bg_df)
-aquaspecies_df <- distinct(aquaspecies_df)
+# aquaspecies_df <- distinct(aquaspecies_df)
 # plot(aquaspecies_df$x, aquaspecies_df$y) # Check data repartition
 # We mostly have data in western and central Africa and eastern North America
 
@@ -238,7 +239,7 @@ check_overlaps_relate <- function(vect) {
   return(overlaps)
 }
 
-# Appliquer la fonction pour vérifier les chevauchements
+# Appliquer la fonction pour vérifier les chevauchements 
 overlaps_matrix_relate <- check_overlaps_relate(buffered_regions_vect)
 
 # Identifier les paires de polygones qui se chevauchent

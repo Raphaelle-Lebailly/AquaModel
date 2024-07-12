@@ -28,7 +28,7 @@ library(geodata) # Import environmental data
 library(sf) 
 library(leaflet) # Web mapping
 library(CoordinateCleaner) 
-library(biooracler) # Marine data
+# library(biooracler) # Marine data
 
 
 # FUNCTIONS ---------------------------------------------------------------
