@@ -86,6 +86,9 @@ aquaspecies_df <- na.omit(bg_df)
 # We mostly have data in western and central Africa and eastern North America
 
 
+### REDO THE GETFLAGS FUNCTION IN ORDER TO FILTRATE WHAT'S NOT ACCURATE
+# Getflag()
+
 # Import data borders and coastlines
 world <- ne_countries(scale = "medium", returnclass = "sf") # Borders of the countries
 world <- world[world$continent != "Antarctica", ] # Erase Antartica (issues with intersect function and useless)
@@ -198,9 +201,11 @@ for(i in seq_along(regions)){
 
 rm(intersect, crop, buffer) ; gc()
 
-buffered_regions_vect <- vect(buffered_regions) # Combine the list of spatvectors into 1 spatvector
-# plot(buffered_regions[[40]]) # Check if works individually (Canada)
-# plot(buffered_regions[[45]])
+buffered_regions_vect <-  vect(buffered_regions)
+
+# plot(buffered_regions[[40]],  type = "l")
+# plot(world_vect[world_vect$name == 'Canada', ])# plot(buffered_regions[[45]])
+# legend(legend = "borders (red), buffer(black)")
 # lines(world_vect[world_vect$name == 'China', ])
 
 # Visualize the results
@@ -218,15 +223,16 @@ buffered_regions_vect <- vect(buffered_regions) # Combine the list of spatvector
 # ggsave(filename = 'map_buffer.pdf', plot = img2, width = 10, height = 4)
 
 
+
 ######################################*
 ######################################*
 
 # Check if there are any intersections / overlays between the polygons
 # test <- buffered_regions[-45] # # 45 is china, remove because issues with function below (buffer is weird)
-buffered_regions_vect2 <- vect(test)
 plot(buffered_regions[[10]])
 lines(buffered_regions[[46]])
-regions[10]
+regions[46]
+
 
 check_overlaps_relate <- function(vect) {
   n <- nrow(vect)
@@ -239,18 +245,38 @@ check_overlaps_relate <- function(vect) {
   return(overlaps)
 }
 
-# Appliquer la fonction pour vérifier les chevauchements 
+# Check overlaps by pairs (241 x 241 countries)
 overlaps_matrix_relate <- check_overlaps_relate(buffered_regions_vect)
 
-# Identifier les paires de polygones qui se chevauchent
+# Identify overlapping pairs in the matrix
 overlapping_pairs_relate <- which(overlaps_matrix_relate, arr.ind = TRUE)
 
-# Afficher les paires de polygones qui se chevauchent
-overlapping_pairs_relate # I DO have overlaps, 183 combinations
-
+# Print the overlapping pairs
+View(overlapping_pairs_relate) # 183 overlaps by pair exist, so 0.3% of the matrix
 # Overlaps with neighbor countries on the coast AND ON THE LAND SOMETIMES
 
+dfnames <- overlapping_pairs_relate # Add country name to know where exactly it occurs
+for(i in seq_along(overlapping_pairs_relate)){
+  ind <- overlapping_pairs_relate[i]
+  dfnames[i] <- regions[ind]
+}
+dfnames <- as.data.frame(dfnames) ; rm(ind)
 
+# Do as so the first column wins the intersection region to delete the overlaps
+overlapping_pairs_relate <- as.data.frame(overlapping_pairs_relate)
+for(i in seq_along(overlapping_pairs_relate$row)){
+  ind1 <- overlapping_pairs_relate$row[i]
+  ind2 <- overlapping_pairs_relate$col[i] # Get the index of row and col for overlaps (pair)
+  
+  overlap <- terra::intersect(buffered_regions[[ind1]], buffered_regions[[ind2]]) # Get intersection
+  
+  buffered_regions[[ind1]] <- erase( overlap, buffered_regions[[ind1]]) # Erase the overlap only on the first region
+}
+
+buffered_regions_vect2 <- vect(buffered_regions)
+
+# Check for overlaps (see if it worked)
+overlaps_matrix_relate2 <- check_overlaps_relate(buffered_regions_vect2)
 
 ######################################*
 ######################################*

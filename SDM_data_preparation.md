@@ -126,6 +126,8 @@ rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
 
 ```
 
+Now we are supposed to have dataframes with column names as such: 
+"x" "y" "species" "Aquaculture_status" "country"
 
 ### 3. Environmental data
 - Chosing the right resolution
