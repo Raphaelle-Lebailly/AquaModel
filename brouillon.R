@@ -1,6 +1,10 @@
 # Goal: implement the background data of all the countries containing the species of interest
 library(mgcv)
 
+library(sp) # Spatial data manipulation (reverse geocoding)
+library(rworldmap)
+library(raster)
+
 # Load data, packages and functions ---------------------------------------
 
 setwd("C:/Users/User/Desktop/Internship/Data") # Download and load data (!!! LOCAL ADRESS)
@@ -92,6 +96,8 @@ aquaspecies_df <- na.omit(bg_df)
 # Import data borders and coastlines
 world <- ne_countries(scale = "medium", returnclass = "sf") # Borders of the countries
 world <- world[world$continent != "Antarctica", ] # Erase Antartica (issues with intersect function and useless)
+world <-  world %>% # Sort by alphabetical order (except Åland which will be last, DO NOT DO sort(regions), not the same alphabetical order than arrange())
+  arrange(by = name)
 world_vect <- vect(world)
 regions <- world$name
 coastline <- ne_download(scale = "medium", type = "coastline", category = "physical", returnclass = "sf") # Get coastlines
@@ -101,10 +107,9 @@ countries_with_coastline <- unique(terra::values(intersected)$name)
 rm(intersected)
 
 # Call the object 'regions' to have the countries names (spell them right)
-regions <- sort(regions) # Sort by alphabetical order
 
 
-# Visualizing the points (aquaculture species occurrence in the targeted country) -----------------------------
+###### Visualizing the points (aquaculture species occurrence in the targeted country) -----------------------------
 # COUNTRY <- 'China'
 # which(regions == COUNTRY) # Check if present in the list
 # name_reg <- paste0(COUNTRY)
@@ -145,17 +150,19 @@ regions <- sort(regions) # Sort by alphabetical order
 
 # Data management ---------------------------------------------------------
 
-#### OTHERS ####
+# We want to prepare the environmental and species data here for the SDM.
+
+#### WORLD ################################################################################################
 
 # Countries Geometries
 
 # Check for 1 country
-COUNTRY <- 'China'
+# COUNTRY <- 'China'
 # regions <- world$name
 # regions <- sort(regions)
-which(regions == COUNTRY) # Check if present in the list
-name_reg <- paste0(COUNTRY)
-region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
+# which(regions == COUNTRY) # Check if present in the list
+# name_reg <- paste0(COUNTRY)
+# region <- world_vect[world_vect$name == name_reg, ] # Get country geometry
 # plot(region)
 # 
 # intersect <- terra::intersect(coastline_vect, region)
@@ -191,9 +198,13 @@ for(i in seq_along(regions)){
     # Combine Geometries
     combined <- combineGeoms(region, buffer)
     # Aggregate everything that overlaps in the assembled coast and country SpatVector
-    combined_polygons <- aggregate(combined, dissolve = TRUE)
+    combined_polygons <- aggregate(combined, fun = "min", dissolve = TRUE)
+    # Keep region attributes
+    # region_attributes <- as.data.frame(region)
+    # merged <-  merge(combined_polygons, region_attributes)
     # Add buffered object
     buffered_regions[i] <- combined_polygons
+  
   } else {
     buffered_regions[i] <- region
   }
@@ -202,6 +213,7 @@ for(i in seq_along(regions)){
 rm(intersect, crop, buffer) ; gc()
 
 buffered_regions_vect <-  vect(buffered_regions)
+# length(buffered_regions_vect) # 241, as intended
 
 # plot(buffered_regions[[40]],  type = "l")
 # plot(world_vect[world_vect$name == 'Canada', ])# plot(buffered_regions[[45]])
@@ -224,15 +236,7 @@ buffered_regions_vect <-  vect(buffered_regions)
 
 
 
-######################################*
-######################################*
-
 # Check if there are any intersections / overlays between the polygons
-# test <- buffered_regions[-45] # # 45 is china, remove because issues with function below (buffer is weird)
-plot(buffered_regions[[10]])
-lines(buffered_regions[[46]])
-regions[46]
-
 
 check_overlaps_relate <- function(vect) {
   n <- nrow(vect)
@@ -245,146 +249,115 @@ check_overlaps_relate <- function(vect) {
   return(overlaps)
 }
 
-# Check overlaps by pairs (241 x 241 countries)
-overlaps_matrix_relate <- check_overlaps_relate(buffered_regions_vect)
+overlaps_matrix_relate <- check_overlaps_relate(buffered_regions_vect) # Check overlaps by pairs (241 x 241 countries), LONG
+overlapping_pairs_relate <- which(overlaps_matrix_relate, arr.ind = TRUE) # Identify overlapping pairs in the matrix
+# length(overlapping_pairs_relate)/2 # 183 overlaps
 
-# Identify overlapping pairs in the matrix
-overlapping_pairs_relate <- which(overlaps_matrix_relate, arr.ind = TRUE)
-
-# Print the overlapping pairs
-View(overlapping_pairs_relate) # 183 overlaps by pair exist, so 0.3% of the matrix
-# Overlaps with neighbor countries on the coast AND ON THE LAND SOMETIMES
-
-dfnames <- overlapping_pairs_relate # Add country name to know where exactly it occurs
-for(i in seq_along(overlapping_pairs_relate)){
-  ind <- overlapping_pairs_relate[i]
-  dfnames[i] <- regions[ind]
-}
-dfnames <- as.data.frame(dfnames) ; rm(ind)
+# dfnames <- overlapping_pairs_relate # Add country name to know where exactly it occurs (optional, just to have a visual)
+# for(i in seq_along(overlapping_pairs_relate)){
+#   ind <- overlapping_pairs_relate[i]
+#   dfnames[i] <- regions[ind]
+# }
+# dfnames <- as.data.frame(dfnames) ; rm(ind)
 
 # Do as so the first column wins the intersection region to delete the overlaps
 overlapping_pairs_relate <- as.data.frame(overlapping_pairs_relate)
+buffered_regions2 <- buffered_regions
+
 for(i in seq_along(overlapping_pairs_relate$row)){
   ind1 <- overlapping_pairs_relate$row[i]
   ind2 <- overlapping_pairs_relate$col[i] # Get the index of row and col for overlaps (pair)
   
-  overlap <- terra::intersect(buffered_regions[[ind1]], buffered_regions[[ind2]]) # Get intersection
+  overlap <- terra::intersect(buffered_regions2[[ind1]], buffered_regions2[[ind2]]) # Get intersection
   
-  buffered_regions[[ind1]] <- erase( overlap, buffered_regions[[ind1]]) # Erase the overlap only on the first region
+  buffered_regions2[[ind1]] <- erase(buffered_regions2[[ind1]], overlap) # Erase the overlap only on the first region
 }
 
-buffered_regions_vect2 <- vect(buffered_regions)
+
+
+den <- buffered_regions2[[57]] # Select the spatvector that is a problem (Denmark here)
+den <- combineGeoms(den[1], den[2]) # Keep only 1 geometry instead of 2 (Combine the geometries)
+buffered_regions2[[57]] <-  den # Replace with the new object in the regions object
+
+
+buffered_regions_vect2 <- vect(buffered_regions2) # Create the SpatVector object
+length(buffered_regions_vect2) # 241, ISSUE SOLVED
+# plot(buffered_regions_vect)
+# plot(buffered_regions_vect2)
+
+rm(overlapping_pairs_relate, overlapping_pairs_relate2, overlaps_matrix_relate, overlaps_matrix_relate2, overlap) ; gc()
+rm(buffered_regions, buffered_regions_vect)
+
+
+# Add the attributes to the 241 countries (lost when changed the geometry)
+reg_sf <- lapply(buffered_regions2, as_sf) # 241 sf objects
+
+world2 <- world # WORKSSS
+for(i in 1:dim(world2)[1]){
+  world2$geometry[i] <- reg_sf[[i]]$geometry}
+
+world_vect2 <- vect(world2) # NEW SPATVECTOR BORDERS 
+# plot(world_vect2[world_vect2$name == "Brazil",])
+# plot(world_vect[world_vect2$name == "Brazil",])
+
 
 # Check for overlaps (see if it worked)
-overlaps_matrix_relate2 <- check_overlaps_relate(buffered_regions_vect2)
+# overlaps_matrix_relate2 <- check_overlaps_relate(world_vect2)
+# overlapping_pairs_relate2 <- which(overlaps_matrix_relate2, arr.ind = TRUE)
+# length(overlapping_pairs_relate2) # 8 remains, but litterally impossible. Plus, empty geometry.
+# dfnames2 <- overlapping_pairs_relate2 # Add country name to know where exactly it occurs
+# for(i in seq_along(overlapping_pairs_relate2)){
+#   ind <- overlapping_pairs_relate2[i]
+#   dfnames2[i] <- regions[ind]
+# }
+# dfnames2 <- as.data.frame(dfnames2) ; rm(ind)
 
-######################################*
-######################################*
+
+# Now, we have "world" containing the borders and "world2" containing the buffered coastal borders + continental borders
 
 
-### SPECIES DATA ###
+### SPECIES DATA ################################################################################################
 
 # Test map
 # Current geometry from rnaturalearth package but multiple issues to map the data
 # See if there are pb also with cropping per country the data (missing data that are not inlands)
 # world2 <- geodata::world(resolution = 5, level = 0, path = tempdir()) # Try to map with this
 # plot(world2)
-library(SeaVal) # Add countries names according to coordinates (DOES NOT WOOOORK)
 
-# Other thing to test out if I have overlaps between countries
-##############################*
-##############################*
 
-buffered_regions2 <- list()
-coastline_vect2 <- as_sf(coastline_vect)
+## REVERSE GEOLOCATION 
+points <- data_frame('x' = bg_df$x, 'y' = bg_df$y) # Dataframe with all coordinates from bg_df
 
-for (i in seq_along(regions)) {
-  region <- world_vect[world_vect$name == regions[i], ]
+coords2country <- function(points, spatial_ref){  
+  countries_geom <- as(spatial_ref, "Spatial") # Use my altered object to draw new borders
+  # countriesSP <- getMap(resolution='low')
+  #countriesSP <- getMap(resolution='high') #you could use high res map from rworldxtra if you were concerned about detail
   
-  if (regions[i] %in% countries_with_coastline) {
-    intersect <- st_intersection(coastline_vect, region)
-    crop <- st_crop(region, st_bbox(intersect))
-    buffer <- st_buffer(crop, 22000) # Appliquer un buffer de 22km sur toutes les côtes
-    combined <- st_union(region, buffer)
-    buffered_regions2[[i]] <- combined
-  } else {
-    buffered_regions2[[i]] <- region
-  }
+  # convert our list of points to a SpatialPoints object
+  
+  # pointsSP = SpatialPoints(points, proj4string=CRS(" +proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0"))
+  
+  # setting CRS directly to that from rworldmap
+  pointsSP = SpatialPoints(points, proj4string=CRS(proj4string(countries_geom)))  
+  
+  
+  # use 'over' to get indices of the Polygons object containing each point 
+  indices = over(pointsSP, countries_geom)
+  
+  # return the ADMIN names of each country
+  return(indices$name) 
+  #indices$ISO3 # returns the ISO3 code 
+  #indices$continent   # returns the continent (6 continent model)
+  #indices$REGION   # returns the continent (7 continent model)
 }
 
+bg_df$country <- coords2country(points, world2)
 
-# Avoid overlaps in buffers
-combined_regions <- do.call(st_sfc, buffered_regions2)
+diffe <- coords2country()
 
-
-# Test new method:
-
-points_sf <- st_as_sf(bg_df, coords = c("x", "y"), crs = 4326)
-
-# Check if there are any overlaps in the different geometries
-int <- relate(buffered_regions_vect, buffered_regions_vect, "intersects")
-ind <-  which(int == TRUE)
-inter <- int[ind]
-
-# Make the geometries valid
-countries <- st_make_valid(buff_countries)
-plot(countries$geometry[101])
-plot(buff_countries$geometry[103]) # Check if helps
-
-# Fonction pour effectuer le reverse geocoding
-reverse_geocode <- function(point, polygons) {
-  # Trouver le pays contenant le point
-  country <- polygons[st_contains(polygons, point, sparse = FALSE), ]
-  if (nrow(country) == 0) {
-    return(NA)  # Si aucun pays ne contient le point
-  } else {
-    return(country$country_name)  # Assurez-vous que le nom du pays est dans une colonne appelée "country_name"
-  }
-}
-
-# Appliquer la fonction à chaque point
-coords$country <- sapply(1:nrow(points_sf), function(i) reverse_geocode(points_sf[i, ], countries))
-
-##############################*
-##############################*
-
-
-
-
-# Normally, with "world" object (in add_country_names) but we need the corrected geometries on the coast
-buff_countries <- as_sf(buffered_regions_vect) # We do have the changed geometries
-# plot(buff_countries$geometry[31]) # Example with Brazil
-
-# Add countries column in full bg dataframe....
-bg_df2 <- tidyterra::rename(bg_df, lon = x, lat = y)
-bg_df2 <- as.data.table(bg_df2)
-bg_df2 <- add_country_names(bg_df2, regions = buff_countries) # With SeaVal package
-bg_df2$country <- gsub(":.*", "", bg_df2$country)  # Delete unused arguments (subregions)
-bg_df2 <- tidyterra::rename(bg_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
-# rm(bg_df) ; gc() # Clean memory (CM)
-bg_df2 <- na.omit(bg_df2, cols = "country") # Remove NAs in the "country" column
-
-# ...AND aquaspecies dataframe 
-# Add countries
-aq_df2 <- tidyterra::rename(aquaspecies_df, lon = x, lat = y)
-aq_df2 <- as.data.table(aq_df2)
-aq_df2 <- add_country_names(aq_df2, regions = buff_countries)
-aq_df2$country <- gsub(":.*", "", aq_df2$country)  # Delete unused arguments (subregions)
-aq_df2 <- tidyterra::rename(aq_df2, x = lon, y = lat) # Rename back the coordinates (useful for later)
-aq_df2 <- na.omit(aq_df2, cols = "country") # Remove NAs in the "country" column
-rm(aquaspecies_df, subdf_thrsh) ; gc() # CM
 
 
 # Select subset of the targeted country for aquaculture species
-
-# Filter to target
-# Aquaculture species
-# USELESS TO FILTER BY COUNTRY: WE STUDY SPECIES IN ALL AREAS POSSIBLE AND NOT LIMITED BY ADMINISTRATIVE BORDERS
-# WE WANT TO FOCUS ON SPECIES PRESENT IN A COUNTRY OF INTEREST, NOTLIMIT THE AREA TO THE COUNTRY CONCERNING THE AREA OF DISTRIBUTION
-
-# subsp_count <- aq_df2 %>% # Filter by targeted country 
-  # tidyterra::filter(country == COUNTRY)
-
 OCC <- 5 # Set threshold number of minimal occurrences 
 aq_df_occ <- aq_df2 %>% # Get species occurrences for all countries (> threshold)
   group_by(species) %>%
@@ -545,7 +518,7 @@ ggplot(data = world) +
 
 # Pb dots overlay, not that much of a concern, only bad rendering
 
-#### ENVIRONMENTAL DATA ####
+#### ENVIRONMENTAL DATA ################################################################################################
 
 # Get Countries where species occurr
 countries_filtered <- unique(bg_df2$country[bg_df2$species == SPECIES])
@@ -735,7 +708,7 @@ length(which(d$PA == 1)) # See if it worked
 
 
 
-# SDM ---------------------------------------------------------------------
+# Species Distribution Model ---------------------------------------------------------------------
 
 
 # FtestVirtual()# Faire un lapply pour le modele avec la liste de dataframes dat[[i]] acces dans la liste des dfs
