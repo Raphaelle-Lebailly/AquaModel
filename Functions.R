@@ -207,6 +207,7 @@ GetSpDf <- function(dataGBIF){
 #   return(final)
 # }
 
+# Get the species locations fitted to the grid + env data 
 GetCombinedDf <- function(final, sp, base) {
   coord <- matrix(c(sp$x, sp$y), ncol = 2) # Coordinates from species df
   s_sp <- cellFromXY(base, xy = coord) 
@@ -226,12 +227,13 @@ GetCombinedDf <- function(final, sp, base) {
   final$country <- NA
   final$Aquaculture_status <- NA # Create new columns in final dataframe
   
-  index <- tapply(1:length(s_env), s_env, function(x) {return(x)})
-  rn <- index[as.character(s_sp[p])]
+  index <- tapply(1:length(s_env), s_env, function(x) {return(x)}) # Create named array 
+  rn <- index[as.character(s_sp[p])] # Select in index the ID of the GBIF location
   
   # Get final dataframe
   final$species[rn] <- sp$species[p] # Add species column
   final$PA[rn] <- sp$PA[p] # Add presence/absence column
+  # length(which(!is.na(final$PA)))
   
   # Add country column, ensuring NA values are retained
   final$country[rn] <- sp$country[p]
@@ -267,45 +269,56 @@ GetCombinedDf <- function(final, sp, base) {
 
 
 # Get the cropped raster given the targeted area --------------------------
+# GetCroppedRaster <- function(list_raster, extent){
+#   # Get extent
+#   name_reg <- paste0(extent)
+#   region <- world_vect[world_vect$name == name_reg, ]
+#   
+#   if(name_reg %in% countries_with_coastline){
+#     # Draw polygon from coastline
+#     intersect <- terra::intersect(coastline_vect, region)
+#     
+#     # Crop coastline in targeted area
+#     crop <- crop(region, intersect)
+#     
+#     # Add a buffer everywhere following the border
+#     buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
+#     
+#     # Combine Geometries
+#     combined <- combineGeoms(region, buffer)
+#     
+#     # Crop raster
+#     rast_ext <- list()
+#     for (i in seq_along(list_raster)) {
+#       rast_ext[[i]] <- crop(list_raster[[i]], combined, mask = TRUE) # use mask to respect boundaries and not extent
+#     }
+#   } else {
+#     rast_ext <- list()
+#     for (i in seq_along(list_raster)) {
+#       rast_ext[[i]] <- crop(list_raster[[i]], region, mask = TRUE) # use mask to respect boundaries and not extent
+#     }
+#   }
+#   
+#   return(rast_ext)
+#   
+#   # VERSION APPLY DU CI DESSUS
+#   # lapply(X = list_raster, FUN = function(x){
+#   #   crop(x, reg_ext)
+#   # })
+#   
+# }
+
+
 GetCroppedRaster <- function(list_raster, extent){
   # Get extent
   name_reg <- paste0(extent)
-  region <- world_vect[world_vect$name == name_reg, ]
-  
-  if(name_reg %in% countries_with_coastline){
-    # Draw polygon from coastline
-    intersect <- terra::intersect(coastline_vect, region)
-    
-    # Crop coastline in targeted area
-    crop <- crop(region, intersect)
-    
-    # Add a buffer everywhere following the border
-    buffer <- buffer(crop, width = 22000) # Apply 22km buffer on all coasts
-    
-    # Combine Geometries
-    combined <- combineGeoms(region, buffer)
-    
-    # Crop raster
-    rast_ext <- list()
-    for (i in seq_along(list_raster)) {
-      rast_ext[[i]] <- crop(list_raster[[i]], combined, mask = TRUE) # use mask to respect boundaries and not extent
-    }
-  } else {
-    rast_ext <- list()
-    for (i in seq_along(list_raster)) {
+  region <- world_vect2[world_vect$name == name_reg, ]
+  rast_ext <- list()
+  for (i in seq_along(list_raster)) {
       rast_ext[[i]] <- crop(list_raster[[i]], region, mask = TRUE) # use mask to respect boundaries and not extent
     }
-  }
-  
   return(rast_ext)
-  
-  # VERSION APPLY DU CI DESSUS
-  # lapply(X = list_raster, FUN = function(x){
-  #   crop(x, reg_ext)
-  # })
-  
 }
-
 
 
 ### Get subset of background data -------------------------------------------
@@ -475,6 +488,7 @@ GetSubBg <-function(bg_df, extent){
 
 # Group fusion for big dataframes -----------------------------------------
 
+# Merge (+ cell ID)
 GetMerged <- function(df_list, group_size) {
   merged_list <- list()
   num_groups <- ceiling(length(df_list) / group_size)
@@ -486,11 +500,12 @@ GetMerged <- function(df_list, group_size) {
     merged_group <- reduce(group, ~ full_join(.x, .y, by = c("x", "y")))
     merged_list[[i]] <- merged_group
   }
-
-  # Fusionner tous les groupes ensemble
-  final_merged <- reduce(merged_list, ~ full_join(.x, .y, by = c("x", "y")))
   
-  return(final_merged)
+  # Fusionner tous les groupes ensemble
+  # final_merged <- reduce(merged_list, ~ full_join(.x, .y, by = c("x", "y")))
+  # final_merged <- reduce(merged_list, rbind)
+  
+  return(merged_list)
 }
 
 
@@ -498,16 +513,47 @@ GetMerged <- function(df_list, group_size) {
 
 # Get background data -----------------------------------------------------
 # Sample the background species according to a target species (for aquaculture in the future SDM)
-sample_background <- function(bg_df,  
-                              sp){
+# Get background species according to targeted species
+sample_background <- function(background_df, sp){ 
   
   # Extract countries where targeted species occur
-  countries_filtered <- bg_df$country[bg_df$species == sp]
+  countries_filtered <- unique(background_df$country[background_df$species == sp])
   
   # Filter SP background
-  df.temp <- bg_df[bg_df$species != sp & countries_filtered %in% countries_filtered,]  
-  row.temp <- sample(x = 1:nrow(df.temp), size = 10000, replace = F)  # random coordinates sample, size 10,000
-  
-  return(sub_df = df.temp[row.temp,])
+  df.temp <- bg_df[bg_df$species != SPECIES & bg_df$country %in% countries_filtered,] 
+  if(length(df.temp$species) > 10000){
+    row.temp <- sample(x = 1:nrow(df.temp), size = 10000, replace = F)  # random coordinates sample, size 10,000
+    sub_df = df.temp[row.temp,]
+  } else {
+    sub_df <- df.temp
+  } 
+  return(sub_df)
 }
 
+
+
+
+# Reverse Geolocation ------------------------------------------------------------------------------------------------
+
+coords2country <- function(points, spatial_ref){  
+  countries_geom <- as(spatial_ref, "Spatial") # Use my altered object to draw new borders
+  # countriesSP <- getMap(resolution='low')
+  #countriesSP <- getMap(resolution='high') #you could use high res map from rworldxtra if you were concerned about detail
+  
+  # convert our list of points to a SpatialPoints object
+  
+  # pointsSP = SpatialPoints(points, proj4string=CRS(" +proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0"))
+  
+  # setting CRS directly to that from rworldmap
+  pointsSP <-  SpatialPoints(points, proj4string=CRS(proj4string(countries_geom)))  
+  
+  
+  # use 'over' to get indices of the Polygons object containing each point 
+  indices <-  over(pointsSP, countries_geom)
+  
+  # return the ADMIN names of each country
+  return(indices$name) 
+  #indices$ISO3 # returns the ISO3 code 
+  #indices$continent   # returns the continent (6 continent model)
+  #indices$REGION   # returns the continent (7 continent model)
+}
