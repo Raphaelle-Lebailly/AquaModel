@@ -44,6 +44,17 @@ rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
 # BASE <- env_var[[19]] # Fine grid (terrestrial raster)
 BASE <- env_var[[1]] # Coarser grid (aquatic raster)
 
+
+# Try to use the HydroSHEDS variables
+dir2 <- "C:/Users/User/Desktop/Internship/Data/Climate/hydrosheds"
+
+af <- rast(paste0(dir2,"/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp/RiverATLAS_v10_af.shx"))
+
+hydrorivers <- sf::st_read(paste0(dir2, "/RiverATLAS_Data_v10_shp/RiverATLAS_v10_shp/RiverATLAS_v10_af.shp"))
+
+
+
+
 #### SPECIES DATA ####
 ## Download
 # bg_df <- read_rds("real_bg.rds") # All GBIF data
@@ -60,7 +71,7 @@ BASE <- env_var[[1]] # Coarser grid (aquatic raster)
 #   tidyterra::rename(x = decimalLongitude, y = decimalLatitude)
 # saveRDS(GBIF4, "GBIF_Fishbase_60.rds")
 bg_df <- read_rds("GBIF_Fishbase_60.rds") # All GBIF data after 1960 (6,281 species)
-# hist(bg_df$year, main = "GBIF data occurrences from 1960 to 2019", col = "gray", xlab = "Year")
+hist(bg_df$year, main = "GBIF data occurrences from 1960 to 2019", col = "gray", xlab = "Year")
 
 
 # Access rfishbase data to retrieve fishbase aquaculture species names
@@ -783,7 +794,40 @@ ggplot(Newdat, aes(x = x, y = y, fill = predictions)) + # So freaking long to di
 gc()
 
 
+# Predictions on a list of 20 countries identified as hunger hotspots
+hh <- c("Haiti", "Mali", "Nigeria", "Lebanon", "Sierra Leone", "Burkina Faso", "Chad", "Central African Rep.",
+        "Dem. Rep. Congo", "Palestine", "Syria", "Yemen", "Sudan", "Malawi", "Mozambique",
+        "Zambia", "Zimbabwe", "Ethiopia", "Somalia", "Myanmar") # 20 countries
 
+world3 <- world2 %>% # Get geometry of these 20 countries in order to make predictions on them after
+  tidyterra::filter(name %in% hh)
+
+# Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
+crop_pred <- lapply(X = hh, FUN = function(X){ 
+  GetCroppedRaster(list_raster = env_var, extent = X) 
+})
+res_pred <-  vector("list",length = length(crop_pred)) # Create empty list of length = number of countries
+for (j in seq_along(crop_pred)) { # Resample ; j is the country number
+  for(k in seq_along(crop_pred[[1]])){ # k is the variable number
+    res_pred[[j]][[k]] <- resample(crop_pred[[j]][[k]], BASE, "bilinear") # OK  
+    # env_rs[[j]][[k]] <- crop(env_rs[[j]][[k]], env_crop[[j]][[1]]) # Re-crop to delete some useless NAs
+    res_pred[[j]][[k]] <- as.data.frame(res_pred[[j]][[k]], xy = TRUE) # Dataframe 
+  }
+}
+
+mg_pred <- vector("list", length = length(res_pred))
+for (j in seq_along(res_pred)) { 
+  mg_pred[[j]] <- GetMerged(df_list = res_pred[[j]], group_size = length(res_pred[[j]]))
+}
+# all_env <-  list_rbind(env_mg) # Bind everything together
+rm(res_pred, crop_pred) ; gc()
+
+
+mg_pred <- lapply(mg_pred, function(x) x[[1]]) # Get flat object with all cropped and resampled rasters dataframes
+# names(mg_pred) <-  hh # Add countries names to each list element
+
+saveRDS(mg_pred, "env_df_pred.rds")
+NewDat <- readRDS("env_df_pred.rds")
 
 
 

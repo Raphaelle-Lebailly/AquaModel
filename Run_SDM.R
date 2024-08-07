@@ -155,7 +155,7 @@ env_mg <- lapply(env_mg, function(x) x[[1]]) # Get flat env_mg object
 comb_aqua <- lapply(X = env_mg, FUN = function(X){ # Crop to list of countries where species occur
   GetCombinedDf(X, aq_df_sp, BASE) 
 })
-comb_bg <- lapply(X = env_mg, FUN = function(X){ # Crop to list of countries where species occur
+comb_bg <- lapply(X = env_mg, FUN = function(X){ 
   GetCombinedDf(X, spbg, BASE) 
 })
 
@@ -178,8 +178,8 @@ rm(temp, temp2, ind, ind2)
 
 # FOR THE SDM, KEEP: all_aqua ; all_bg ; env_mg
 
-TIME2 <- Sys.time()
-print(TIME1 - TIME2)
+# TIME2 <- Sys.time()
+# print(TIME1 - TIME2)
 
 # MODEL -------------------------------------------------------------------
 # Faire un lapply pour le modele avec la liste de dataframes dat[[i]] acces dans la liste des dfs
@@ -188,12 +188,25 @@ sim_func <- function(names_x, name_y,dat){
   return(tmp_sdm)
 }
 name_y <- "PA"
-names_x <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
-             "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
-             "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
-             "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
-names_x1 <- paste("s(",names_x,",k=5)",sep="") # and for all variables that you want to allow a non-linear fit
+# names_all <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
+#              "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+#              "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+#              "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+# 
+# names_x1 <- paste("s(",names_all,",k=5)",sep="")
 gc()
+
+all_aqua2 <- all_aqua[!is.na(all_aqua$PA),] # Remove the rows with NA PA in all_aqua
+all_bg2 <- all_bg[!is.na(all_bg$PA),] # Same for background species
+
+data_aqua <- GetModelData(data_aqua = all_aqua, data_bg = all_bg)[[1]] # Get dagta cleaned from unused variables
+data_bg <- GetModelData(data_aqua = all_aqua, data_bg = all_bg)[[2]] # Same for background data
+names_x <- GetModelData(data_aqua = all_aqua, data_bg = all_bg)[[3]] # List of the names to actually use in the formula
+
+names_x1 <- paste("s(",names_x,",k=5)",sep="") # Add the smoothing function
+
+
+
 
 # Do a loop to get all the predictions for the whole list of dataframes
 # sdm_obj <- list()
@@ -203,20 +216,41 @@ gc()
 # sdm_obj2=sim_func(names_x1,name_y, dat[[3]]) # get back the sdm object
 # sdm_obj2
 
+
+#### PREDICTIONS ####
+# Select countries that are considered hunger hotspots (FAO and WFP)
+hh <- c("Haiti", "Mali", "Nigeria", "Lebanon", "Sierra Leone", "Burkina Faso", "Chad", "Central African Rep.",
+        "Dem. Rep. Congo", "Palestine", "Syria", "Yemen", "Sudan", "Malawi", "Mozambique",
+        "Zambia", "Zimbabwe", "Ethiopia", "Somalia", "Myanmar") # 20 countries
+
+world3 <- world2 %>% # Get geometry of these 20 countries in order to make predictions on them after
+  tidyterra::filter(name %in% hh)
+
 # Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
-Newdat <- env_mg
+NewDat <- readRDS("env_df_pred.rds")
+
+# Apply the predictions on each country in the list (n = 20)
+
+
+
 # Loop for predictions
-pred <- list()
-Newpred <- rep(list(Newdat), length(dat))
-for (i in seq_along(sdm_obj)) {
-  pred[[i]] <- predict.gam(sdm_obj[[i]], newdata=Newdat, type = "response") # ADD type = 'response' to have results on 0-1 scale
-  Newpred[[i]]$predictions <- pred[[i]]
-}
+# pred <- list()
+# Newpred <- rep(list(Newdat), length(dat))
+# for (i in seq_along(sdm_obj)) {
+#   pred[[i]] <- predict.gam(sdm_obj[[i]], newdata=Newdat, type = "response") # ADD type = 'response' to have results on 0-1 scale
+#   Newpred[[i]]$predictions <- pred[[i]]
+# }
 
 # pred2 <- predict.gam(sdm_obj[[1]], newdata=Newdat) # new data would be the environments that you want to extrapolate the model to.
 # Newdat$predictions <- pred # Add the predictions to the new data
 
-#### Plot the results -----------------------------------------------------
+
+#### VALIDATION ####
+library(proc) # pROC package to estimate AUC of each model
+
+
+
+#### PLOT ####
 
 # world_vect <- st_read(system.file("shape/nc.shp", package="sf"))
 country_geom <- world[world$name == 'India', ]

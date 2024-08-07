@@ -557,3 +557,35 @@ coords2country <- function(points, spatial_ref){
   #indices$continent   # returns the continent (6 continent model)
   #indices$REGION   # returns the continent (7 continent model)
 }
+
+
+
+# Select variables for final datasets --------------------------------------------------------------------------------
+
+# If less than 70% of data are NAs for certain variables --> probably means there aren't enough to be included in the analysis
+# Threshold randomly chosen since some species are diadromous
+
+GetModelData <-  function(data_aqua, data_bg){
+  if(length(which(is.na(all_aqua2$no3_mean)))/length(all_aqua2$x) > 0.7){
+    names_x <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+                 "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+                 "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+    del <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean") # Column names to delete
+    all_aqua3 <- all_aqua2[,!(names(all_aqua2) %in% del)] # Delete useless columns
+    all_bg3 <- all_bg2[,!(names(all_bg2) %in% del)] # Delete useless columns
+  } else if(length(which(is.na(all_aqua2$prec_cold_quart)))/length(all_aqua2$x) > 0.7) {
+    names_x <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean")
+    del <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+             "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+             "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+    all_aqua3 <- all_aqua2[,!(names(all_aqua2) %in% del)] # Delete useless columns
+    all_bg3 <- all_bg2[,!(names(all_bg2) %in% del)] # Delete useless columns
+  } else {
+    names_x <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
+                 "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+                 "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+                 "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+    all_aqua3 <- all_aqua2 ; all_bg3 <- all_bg2
+  }
+  list(all_aqua3, all_bg3, names_x)
+}
