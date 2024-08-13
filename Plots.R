@@ -14,20 +14,53 @@ setwd("C:/Users/User/Desktop/Internship/Data")# Download and load data (!!! LOCA
 source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Allows to access the functions (!!! LOCAL ADRESS)
 
 # SPECIES DATA
-aquaspecies_df <- read_rds("aquaspecies_df.rds")
-bg_df <- read_rds("background_data_clean.rds")
+# aquaspecies_df <- read_rds("aquaspecies_df.rds")
+# bg_df <- read_rds("background_data_clean.rds")
+
+bg_df <- read_rds("GBIF_Fishbase_60.rds") # All GBIF data after 1960 (6,281 species)
+# Access rfishbase data to retrieve fishbase aquaculture species names
+status <- c('commercial', 'experimental', 'likely future use') # Change if we want different status
+sp_fb <- fb_tbl("species") %>% 
+  mutate(species = paste(Genus, Species)) %>% 
+  tidyterra::select(species, UsedforAquaculture) %>% 
+  tidyterra::filter(UsedforAquaculture %in% status) %>% 
+  tidyterra::rename(Aquaculture_status = UsedforAquaculture)
+# 449 species names for different aquaculture status
+
+# Join species occurrences with aquaculture status
+bg_df <- bg_df %>% 
+  left_join(sp_fb, by = "species")
+rm(sp_fb) ; gc()
+bg_df <- distinct(bg_df)
+# Reverse Geolocation (get country from coordinates)
+points <- data_frame('x' = bg_df$x, 'y' = bg_df$y) # Dataframe with all coordinates from bg_df
+bg_df$country <- coords2country(points, world2) # 43.85186 % is NA values ; 59.24157%
+
+aquaspecies_df <- na.omit(bg_df) # Create dataframe with all aquaculture species data
+bg_df <- bg_df[!is.na(bg_df$country),] # Remove the rows with NA countries in bg_df
+
+# Select subset of the targeted country for aquaculture species
+# OCC <- 5 # Set threshold number of minimal occurrences 
+# aq_df_occ <- aquaspecies_df %>% # Get species occurrences for all countries (> threshold)
+#   group_by(species) %>%
+#   tidyterra::filter(n() >= OCC) %>% 
+#   ungroup()
+
+d <- table(bg_df$country)
+
+
 
 # ENV DATA 
-pathtmin <- "C:/Users/User/Desktop/Internship/Data/Climate/tmin" # Manually put the data inside separate files (otherwise, same file)
-path_tmin <- paste0(pathtmin,"/wc2.1_30s") # Make a loop in the future for the different files
-raster_tmin <- list.files(path_tmin, pattern = "\\.tif$", full.names = TRUE)
-tmin <- rast(raster_tmin)
+# pathtmin <- "C:/Users/User/Desktop/Internship/Data/Climate/tmin" # Manually put the data inside separate files (otherwise, same file)
+# path_tmin <- paste0(pathtmin,"/wc2.1_30s") # Make a loop in the future for the different files
+# raster_tmin <- list.files(path_tmin, pattern = "\\.tif$", full.names = TRUE)
+# tmin <- rast(raster_tmin)
 
 
 
 # Créer un objet spatial à partir des coordonnées x et y
-coordinates(aquaspecies_df) <- ~ x + y
-proj4string(aquaspecies_df) <- CRS("+proj=longlat +datum=WGS84")
+coordinates(bg_df) <- ~ x + y
+proj4string(bg_df) <- CRS("+proj=longlat +datum=WGS84")
 # Charger les frontières des pays à partir de Natural Earth
 world <- ne_countries(scale = "medium", returnclass = "sf")
 countries <- vect("C:/Users/User/Desktop/Internship/Data/Regions/world-administrative-boundaries/world-administrative-boundaries.shp")
@@ -175,5 +208,46 @@ map1
 
 ggsave(file="species_density_per_country.pdf", plot=map1, width=13, height=6)
 
-# scale_fill_gradient(name = "Number of samples", low = "yellow", high = "red", na.value = "grey50")+
-  
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+
+bg <- table(bg_df$country) # Point occurrences per country for the background
+aq <- table(aquaspecies_df$country)
+
+country_df <- data.frame(bg)
+country_df2 <- data.frame(aq)
+
+world_data1 <- world %>%
+  left_join(country_df, by = c("name" = "Var1"))
+which(world_data1$name == "Antarctica")
+world_data1 <- world_data1[-240,]
+
+world_data2 <- world %>%
+  left_join(country_df2, by = c("name" = "Var1"))
+which(world_data2$name == "Antarctica")
+world_data2 <- world_data2[-240,]
+
+
+colour_breaks <- c(10,50, 100, 500, 2000)
+colours <- c("lightyellow","yellow", "orange", "red", "darkred")
+
+ img <- ggplot(data = world_data2) +
+  geom_sf(aes(fill = Freq)) +
+  scale_fill_gradientn(
+    limits = range(world_data1$Freq, na.rm = T),
+    name = "Number of samples",
+    colors = colours[c(1, seq_along(colours), length(colours))],
+    values  = c(0, scales::rescale(colour_breaks, from = range(world_data2$Freq, na.rm = T)), 1),
+    na.value = "grey50") +
+  theme_minimal() +
+  labs(fill = "Number of samples")
+
+img
+
+ggsave(file = "species_density_per_country_aq.pdf", plot = img, width=13, height=6)
+
+
+
+
+
+
