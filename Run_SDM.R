@@ -1,6 +1,6 @@
 # Run SDM
 
-TIME1 <- Sys.time()
+# TIME1 <- Sys.time()
 # PACKAGES ----------------------------------------------------------------
 ### LOADED FROM SOURCE CODE FOR THE FUNCTIONS
 library(mgcv) # Run the GAM
@@ -115,13 +115,34 @@ rm(a,b)
 
 # Prepare Model Data for 1 species 
 # Aquaculture data
-SPECIES <-  list_species[1]
+which(list_species == "Pseudopleuronectes americanus")
+SPECIES <-  list_species[1] # Chose 1 species in the list ; try with a marine species
+
+# ex <- list() # For all species
+# for(i in seq_along(list_species)){
+#   ex[[i]] <- aq_df_occ %>% 
+#     tidyterra::filter(species == list_species[i])
+# }
+# ex2 <- list_rbind(ex)
+
 aq_df_sp <- aq_df_occ %>% 
   tidyterra::filter(species == SPECIES) # Filter only the species of interest
 aq_df_sp$PA <- 1 # Add presence absence column
 # Background data
 spbg <- sample_background(background_df = bg_df, sp = SPECIES) # Select subdataframe of random background species where targeted aquaculture species occur
 spbg$PA <- 0 
+
+# Have a visual of the repartition of the points
+# img <- ggplot(data = world) +
+#   geom_sf(color = "black") +
+#   geom_sf(fill = "antiquewhite1") +
+#   theme_minimal() +
+#   theme(panel.background = element_rect(fill = 'light blue'))+
+#   geom_point(data = aq_df_sp, aes(x = x, y = y),size = 3, colour = "blue") +
+#   theme_minimal()+
+#   theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+# img
+# ggsave("location_points.pdf", img, width = 12, height = 6)
 
 
 #### ENVIRONMENTAL DATA ####
@@ -188,6 +209,151 @@ sim_func <- function(names_x, name_y,dat){
   return(tmp_sdm)
 }
 name_y <- "PA"
+
+# Marine Model ####  
+all_aquaM <- all_aqua %>% 
+  tidyterra::select(x, y, no3_mean, po4_mean, si_mean, bathymetry_max, thetao_mean, phyc_mean, species, PA, country)
+all_bgM <- all_bg %>% 
+  tidyterra::select(x, y, no3_mean, po4_mean, si_mean, bathymetry_max, thetao_mean, phyc_mean, species, PA, country)
+
+all_aquaM2 <- all_aquaM[complete.cases(all_aquaM), ]
+all_bgM2 <- all_bgM[complete.cases(all_bgM), ] # Same for background species
+
+all_dataM <- rbind(all_aquaM2,all_bgM2)
+
+
+names_xM <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean")
+names_x1M <- paste("s(",names_xM,",k=5)",sep="") # Add the smoothing function
+sdm_objM <- sim_func(names_x1M,name_y, all_dataM)
+
+#### Predictions ####
+hh <- c("Haiti", "Mali", "Nigeria", "Lebanon", "Sierra Leone", "Burkina Faso", "Chad", "Central African Rep.",
+        "Dem. Rep. Congo", "Palestine", "Syria", "Yemen", "Sudan", "Malawi", "Mozambique",
+        "Zambia", "Zimbabwe", "Ethiopia", "Somalia", "Myanmar") # 20 countries
+
+world3 <- world2 %>% # Get geometry of these 20 countries in order to make predictions on them after
+  tidyterra::filter(name %in% hh)
+
+# Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
+NewDat <- readRDS("env_df_pred_all.rds")
+
+for(i in seq_along(NewDat)){ # Select in all of the dataframes the variables of interest
+  NewDat[[i]] <- NewDat[[i]] %>% 
+    tidyterra::select(c(x,y,names_xM))
+}
+
+
+# Apply the predictions on each country in the list (n = 20)
+pred <- predict.gam(sdm_objM, newdata = NewDat[[1]], type = "response") # ADD type = 'response' to have results on 0-1 scale
+Newpred <- NewDat[[1]]
+Newpred$predictions <- pred
+
+
+#### Plot ####
+
+# world_vect <- st_read(system.file("shape/nc.shp", package="sf"))
+country_geom <- world[world$name == hh[1], ]
+reg_ext <- ext(country_geom)
+
+# x11() # Trop Lourd
+image <- ggplot(Newpred) + # So freaking long to display
+  geom_tile(aes(x = x, y = y, fill = predictions)) +
+  geom_sf(data = country_geom, fill = NA, color = "black", size = 0.4) +
+  scale_fill_viridis_c() +
+  labs( x = "Latitude",
+        y = "Longitude",
+        fill = "Probability of presence")
+
+image
+# coord_sf(xlim = range(env_mg$x), ylim = range(env_mg$y), expand = FALSE) # Ajuster les limites  
+# setwd("C:/Users/User/Desktop/Internship/Images")
+ggsave("Haiti_Mugil_curema_Coast.pdf", image, width = 7, height = 8)
+gc()
+
+
+#### Validation ####
+library(pROC) # pROC package to estimate AUC of each model
+
+
+
+
+
+# Freshwater Model ####
+all_aquaF <- all_aqua %>% 
+  tidyterra::select(x, y, tmean_ann, diurn_mean_range, isotherm,temp_seas, tmax, tmin, tmean_ann_range,
+                    tmin_wet_quart, tmin_fry_quart, tmin_warm_quart, tmin_cold_quart, prec_ann, prec_wet,
+                    prec_dry, prec_var, prec_wet_quart, prec_dry_quart, prec_warm_quart, prec_cold_quart, species, PA, country)
+all_bgF <- all_bg %>% 
+  tidyterra::select(x, y, tmean_ann, diurn_mean_range, isotherm,temp_seas, tmax, tmin, tmean_ann_range,
+                    tmin_wet_quart, tmin_fry_quart, tmin_warm_quart, tmin_cold_quart, prec_ann, prec_wet,
+                    prec_dry, prec_var, prec_wet_quart, prec_dry_quart, prec_warm_quart, prec_cold_quart, species, PA, country)
+
+all_aquaF2 <- all_aquaF[complete.cases(all_aquaF), ]
+# all_aquaF2 <- all_aquaF2[-which(all_aquaF2$country == "United States of America"),] # Issue in the variables here
+all_bgF2 <- all_bgF[complete.cases(all_bgF), ] # Same for background species
+
+all_dataF <- rbind(all_aquaF2,all_bgF2)
+
+
+names_xF <- c("tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
+             "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
+             "prec_dry", "prec_var", "prec_wet_quart", "prec_dry_quart", "prec_warm_quart", "prec_cold_quart")
+names_x1F <- paste("s(",names_xF,",k=5)",sep="") # Add the smoothing function
+sdm_objF <- sim_func(names_x1F,name_y, all_dataF)
+
+#### Predictions ####
+hh <- c("Haiti", "Mali", "Nigeria", "Lebanon", "Sierra Leone", "Burkina Faso", "Chad", "Central African Rep.",
+        "Dem. Rep. Congo", "Palestine", "Syria", "Yemen", "Sudan", "Malawi", "Mozambique",
+        "Zambia", "Zimbabwe", "Ethiopia", "Somalia", "Myanmar") # 20 countries
+
+world3 <- world2 %>% # Get geometry of these 20 countries in order to make predictions on them after
+  tidyterra::filter(name %in% hh)
+
+# Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
+NewDat <- readRDS("env_df_pred_all.rds")
+
+for(i in seq_along(NewDat)){ # Select in all of the dataframes the variables of interest
+  NewDat[[i]] <- NewDat[[i]] %>% 
+    tidyterra::select(c(x,y,names_xF))
+}
+
+
+# Apply the predictions on each country in the list (n = 20)
+pred <- predict.gam(sdm_objF, newdata = NewDat[[1]], type = "response") # ADD type = 'response' to have results on 0-1 scale
+Newpred <- NewDat[[1]]
+Newpred$predictions <- pred
+
+
+#### Plot ####
+
+# world_vect <- st_read(system.file("shape/nc.shp", package="sf"))
+country_geom <- world[world$name == hh[1], ]
+reg_ext <- ext(country_geom)
+
+# x11() # Trop Lourd
+image <- ggplot(Newpred) + # So freaking long to display
+  geom_tile(aes(x = x, y = y, fill = predictions)) +
+  geom_sf(data = country_geom, fill = NA, color = "black", size = 0.4) +
+  scale_fill_viridis_c() +
+  labs( x = "Latitude",
+        y = "Longitude",
+        fill = "Probability of presence")
+
+image
+# coord_sf(xlim = range(env_mg$x), ylim = range(env_mg$y), expand = FALSE) # Ajuster les limites  
+# setwd("C:/Users/User/Desktop/Internship/Images")
+ggsave("Nigeria Oreochromus_mortimeri.pdf", image, width = 7, height = 8)
+gc()
+
+
+#### Validation ####
+library(pROC) # pROC package to estimate AUC of each model
+
+
+
+
+# -----------------------------------------------------------------
+
 # names_all <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean",
 #              "tmean_ann", "diurn_mean_range", "isotherm","temp_seas", "tmax", "tmin", "tmean_ann_range",
 #              "tmin_wet_quart", "tmin_fry_quart", "tmin_warm_quart", "tmin_cold_quart", "prec_ann", "prec_wet",
@@ -201,12 +367,14 @@ all_bg2 <- all_bg[!is.na(all_bg$PA),] # Same for background species
 
 data_aqua <- GetModelData(data_aqua = all_aqua, data_bg = all_bg)[[1]] # Get dagta cleaned from unused variables
 data_bg <- GetModelData(data_aqua = all_aqua, data_bg = all_bg)[[2]] # Same for background data
-names_x <- GetModelData(data_aqua = all_aqua, data_bg = all_bg)[[3]] # List of the names to actually use in the formula
+all_data <- rbind(data_aqua,data_bg)
 
+names_x <- GetModelData(data_aqua = all_aqua, data_bg = all_bg)[[3]] # List of the names to actually use in the formula
 names_x1 <- paste("s(",names_x,",k=5)",sep="") # Add the smoothing function
 
 
-
+# Generate GAM formula 
+sdm_obj <- sim_func(names_x1,name_y, all_data)
 
 # Do a loop to get all the predictions for the whole list of dataframes
 # sdm_obj <- list()
@@ -227,10 +395,18 @@ world3 <- world2 %>% # Get geometry of these 20 countries in order to make predi
   tidyterra::filter(name %in% hh)
 
 # Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
-NewDat <- readRDS("env_df_pred.rds")
+NewDat <- readRDS("env_df_pred_all.rds")
+
+for(i in seq_along(NewDat)){ # Select in all of the dataframes the variables of interest
+  NewDat[[i]] <- NewDat[[i]] %>% 
+    tidyterra::select(c(x,y,names_x))
+}
+
 
 # Apply the predictions on each country in the list (n = 20)
-
+pred <- predict.gam(sdm_obj, newdata = NewDat[[3]], type = "response") # ADD type = 'response' to have results on 0-1 scale
+Newpred <- NewDat[[15]]
+Newpred$predictions <- pred
 
 
 # Loop for predictions
@@ -245,19 +421,14 @@ NewDat <- readRDS("env_df_pred.rds")
 # Newdat$predictions <- pred # Add the predictions to the new data
 
 
-#### VALIDATION ####
-library(proc) # pROC package to estimate AUC of each model
-
-
-
 #### PLOT ####
 
 # world_vect <- st_read(system.file("shape/nc.shp", package="sf"))
-country_geom <- world[world$name == 'India', ]
+country_geom <- world[world$name == hh[15], ]
 reg_ext <- ext(country_geom)
 
 # x11() # Trop Lourd
-image <- ggplot(Newpred[[3]]) + # So freaking long to display
+image <- ggplot(Newpred) + # So freaking long to display
   geom_tile(aes(x = x, y = y, fill = predictions)) +
   geom_sf(data = country_geom, fill = NA, color = "black", size = 0.4) +
   scale_fill_viridis_c() +
@@ -267,5 +438,12 @@ image <- ggplot(Newpred[[3]]) + # So freaking long to display
 
 # coord_sf(xlim = range(env_mg$x), ylim = range(env_mg$y), expand = FALSE) # Ajuster les limites  
 # setwd("C:/Users/User/Desktop/Internship/Images")
-ggsave("India_3.jpg", image, width = 10, height = 8)
+ggsave("Mozambique_Oreochromis_mortimeri.pdf", image, width = 10, height = 8)
 gc()
+
+
+#### VALIDATION ####
+library(pROC) # pROC package to estimate AUC of each model
+
+
+
