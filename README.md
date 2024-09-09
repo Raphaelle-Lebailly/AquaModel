@@ -1,6 +1,6 @@
 # 🐟 AquaModel: a model to link aquaculture and nutritional needs in the world 🐟
 
-**Authors: Raphaëlle Lebailly (Master's student at Rennes University) & Brian Leung (Researcher and Associate Professor at McGill University)**
+**Authors: Raphaëlle Lebailly (MSc Graduate at Rennes University) & Prof. Brian Leung (Researcher and Associate Professor at McGill University)**
 
 With this project, we aim to built a Decision Making System for Aquaculture practices. 
 The main goal is to link nutritional issues (malnutrition or deficiencies) with species suitable for aquaculture and for the local environment. We would like to make it accessible for everyone, from scientists and researchers to potential aquaculture farmers, eventually. 
