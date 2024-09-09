@@ -15,7 +15,11 @@ To do so, we decided to combine a Species Distribution Model (SDM) of the used a
 **Files:**
 - **README.md**: Explains the goal of the project.
 - **SDM_data_preparation.md**: Detailed explanations of the methodology.
-- **aquafish.rds**: Raw GBIF data for the species used in aquaculture.
-- **aquaspecies_df.rds**: Tidy species dataframe from **aquafish.rds**.
-- **Test-SDM.r**: First test R file for the SDM.
+- **GBIF_Fishbase_60.rds**: GBIF data for the species used in aquaculture after 1960.
+- **world_borders_with_buffer.rds**: Object with all countries geometries with a 22km buffer on the coasts.
+- **summary_occurrences_grid_fit.rds**: List of species usable for SDM setting up (thresholds after coarse grid fitting).
+- **env_df_pred_all.rds**: List of environmental data of the hunger hotspots (countries) selected to project the SDMs. 
+- **Functions.r**: Functions to be used in "Run_SDM.r"
+- **Run_SDM.r**: Script to run the SDM.
+- **LEBAILLY_Raphaëlle_Internship_report_M2.pdf**: Internship report with detailed explanation of the project and useful sources.
  

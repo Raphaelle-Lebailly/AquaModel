@@ -1,6 +1,11 @@
-# Run SDM
+######################################################################## 
+# Title: "Run-SDM"
+# Description: "First attempt to build Species Distribution Models(SDMs) for species of marine and freshwater fish used in aquaculture.
+# 2nd year MSc project."
+# Date: "09/09/24" - Last Update (R. Lebailly) 
+# Author: Raphaëlle LEBAILLY (MSc Graduate, University of Rennes)
+########################################################################
 
-# TIME1 <- Sys.time()
 # PACKAGES ----------------------------------------------------------------
 ### LOADED FROM SOURCE CODE FOR THE FUNCTIONS
 library(mgcv) # Run the GAM
@@ -10,8 +15,8 @@ library(raster)
 library(rfishbase)
 library(grid)
 
-setwd("C:/Users/User/Desktop/Internship/Data")# Download and load data (!!! LOCAL ADRESS)
-source("C:/Users/User/Documents/GitHub/AquaModel/Functions.R") # Allows to access the functions (!!! LOCAL ADRESS)
+setwd("")# Download and load data (!!! LOCAL ADRESS)
+source("./GitHub/AquaModel/Functions.R") # Allows to access the functions (!!! LOCAL ADRESS)
 
 
 # DATA IMPORTATION --------------------------------------------------------
@@ -30,14 +35,16 @@ world_vect2 <- vect(world2) # As vector
 
 #### ENVIRONMENTAL DATA ####
 ## Download
-pathbio <- "C:/Users/User/Desktop/Internship/Data/Climate/bio"
-path_bio <- paste0(pathbio,"/wc2.1_30s_bio") # Make a loop in the future for the different files
-raster_bio <- list.files(path_bio, pattern = "\\.tif$", full.names = TRUE) # Can't open this list of files ??
-bio <- rast(raster_bio) # 19 variables 
+# 'bio' variables from Worldclim (dowload locally from website first)
+pathbio <- "./Data/Climate/bio" # Address where rasters are located (!!! LOCAL ADRESS)
+path_bio <- paste0(pathbio,"/wc2.1_30s_bio") 
+raster_bio <- list.files(path_bio, pattern = "\\.tif$", full.names = TRUE) 
+bio <- rast(raster_bio) 
 
-## Download every environmental variable for aquatic env
-dir <- "C:/Users/User/Desktop/Internship/Data/Climate/aqua"
-# layers <- download_layers(dataset_id, variables, constraints, fmt = "csv", directory = dir) # fmt is the format, can also be a raster
+# Environmental variable for Marine spaces from 'Bio-Oracle'. Adapt according to the variables selected.
+# Download locally from the website first as well. 
+dir <- "./Data/Climate/aqua" # Address where rasters are located (!!! LOCAL ADRESS)
+
 NO3 <- rast(paste0(dir,"/no3_baseline_2000_2018_depthsurf_8486_b388_df7c_U1716440129770.nc"))
 PO4 <- rast(paste0(dir,"/po4_baseline_2000_2018_depthsurf_6006_d51b_00e9_U1716440256420.nc"))
 SI <- rast(paste0(dir,"/si_baseline_2000_2018_depthsurf_395f_f84b_becc_U1716440390984.nc"))
@@ -56,9 +63,9 @@ rm(bio_list, bio)
 gc()
 rm(NO3, PO4, SI, bathy, surftemp, prim_prod) ; gc() # Remove unused raster
 
-# Set base object # Not cropping before!!
-# BASE <- env_var[[19]] # Fine grid (terrestrial raster)
-BASE <- env_var[[1]] # Coarser grid (aquatic raster)
+# Set base object 
+# BASE <- env_var[[19]] # Fine grid (terrestrial raster, 30 arcsec)
+BASE <- env_var[[1]] # Coarser grid (aquatic raster, 5 arcmin)
 
 
 #### SPECIES DATA ####
@@ -84,7 +91,7 @@ bg_df <- distinct(bg_df)
 #### SPECIES DATA ####
 # Reverse Geolocation (get country from coordinates)
 points <- data_frame('x' = bg_df$x, 'y' = bg_df$y) # Dataframe with all coordinates from bg_df
-bg_df$country <- coords2country(points, world2) # 43.85186 % is NA values ; 59.24157%
+bg_df$country <- coords2country(points, world2) 
 
 aquaspecies_df <- na.omit(bg_df) # Create dataframe with all aquaculture species data
 bg_df <- bg_df[!is.na(bg_df$country),] # Remove the rows with NA countries in bg_df
@@ -98,7 +105,7 @@ aq_df_occ <- aquaspecies_df %>% # Get species occurrences for all countries (> t
 
 # list_species <- unique(aq_df_occ$species) # Get the list of species remaining after cleaning
 
-occ_aft_grdft <- readRDS("summary_occurrences_grid_fit.rds") # Occurrences after grid fitting
+occ_aft_grdft <- readRDS("summary_occurrences_grid_fit.rds") # Occurrences after grid fitting (generated on the coarsest grid, as an example in this case)
 
 ## ! Get the list of species in aquaculture we want to study, from occ_aft_grdft dataframe 
 # Exclude species under 10 occurrences
@@ -116,16 +123,9 @@ rm(a,b)
 
 # Prepare Model Data for 1 species 
 # Aquaculture data
-n <- which(list_species == "Mugil cephalus")
-n
-SPECIES <-  list_species[n] # Chose 1 species in the list ; try with a marine species
-
-# ex <- list() # For all species
-# for(i in seq_along(list_species)){
-#   ex[[i]] <- aq_df_occ %>% 
-#     tidyterra::filter(species == list_species[i])
-# }
-# ex2 <- list_rbind(ex)
+n <- which(list_species == "Mugil cephalus") # Target 1 species in the list 
+n # Verify it exists
+SPECIES <-  list_species[n] # Chose 1 species in the list 
 
 aq_df_sp <- aq_df_occ %>% 
   tidyterra::filter(species == SPECIES) # Filter only the species of interest
@@ -146,9 +146,9 @@ img_visu <- ggplot(data = world) +
 img_visu
 # ggsave("location_points_Mugil_cephalus.pdf", img_visu, width = 12, height = 6)
 
-rm(all_aqua, all_aquaF, all_aquaF2, all_bg, all_bgF, all_bgF2, all_dataF)
-rm(all_aqua, all_aquaM, all_aquaM2, all_bg, all_bgM, all_bgM2, all_dataM)
-gc()
+# rm(all_aqua, all_aquaF, all_aquaF2, all_bg, all_bgF, all_bgF2, all_dataF)
+# rm(all_aqua, all_aquaM, all_aquaM2, all_bg, all_bgM, all_bgM2, all_dataM)
+# gc()
 
 
 #### ENVIRONMENTAL DATA ####
@@ -189,7 +189,7 @@ comb_bg <- lapply(X = env_mg, FUN = function(X){
 all_aqua <-  list_rbind(comb_aqua) # Bind everything together (to get number of occurrences)
 all_bg <-  list_rbind(comb_bg)
 
-# Change back to °C for the worldclim temperature variables (x10 in the original file to decrease file size)
+# Change back to °C for the worldclim temperature variables (x10 or x100 in the original file to decrease file size)
 temp <- c("tmean", "tmax", "tmin") ; temp2 <- c("isotherm", "temp_seas")
 for(i in seq_along(temp)){
   ind <- grep(temp[i], colnames(all_aqua), value = TRUE)
@@ -205,23 +205,20 @@ rm(temp, temp2, ind, ind2)
 
 # FOR THE SDM, KEEP: all_aqua ; all_bg ; env_mg
 
-# TIME2 <- Sys.time()
-# print(TIME1 - TIME2)
 
 # MODEL -------------------------------------------------------------------
-# Faire un lapply pour le modele avec la liste de dataframes dat[[i]] acces dans la liste des dfs
+# Write the formula (GAM)
 sim_func <- function(names_x, name_y,dat){
   tmp_sdm <- gam(formula(paste(name_y,"~",paste(names_x,collapse='+'))),family = binomial, data=dat,select = TRUE, method="GCV.Cp")
   return(tmp_sdm)
 }
-name_y <- "PA"
+name_y <- "PA" # Y variable is "Presence/Absence"
 
+# Countries targeted to project the results as an example are hunger hotspots
 hh <- c("Haiti", "Mali", "Nigeria", "Lebanon", "Sierra Leone", "Burkina Faso", "Chad", "Central African Rep.",
         "Dem. Rep. Congo", "Palestine", "Syria", "Yemen", "Sudan", "Malawi", "Mozambique",
         "Zambia", "Zimbabwe", "Ethiopia", "Somalia", "Myanmar") # 20 countries
 
-# world3 <- world2 %>% # Get geometry of these 20 countries in order to make predictions on them after
-  # tidyterra::filter(name %in% hh)
 
 # Marine Model---------------------------------------------------------------------------------- ####  
 all_aquaM <- all_aqua %>% 
@@ -235,7 +232,7 @@ all_bgM2 <- all_bgM[complete.cases(all_bgM), ] # Same for background species
 all_dataM <- rbind(all_aquaM2,all_bgM2)
 
 
-names_xM <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean")
+names_xM <- c("no3_mean", "po4_mean", "si_mean", "bathymetry_max", "thetao_mean", "phyc_mean") # List of customized variables
 names_x1M <- paste("s(",names_xM,",k=5)",sep="") # Add the smoothing function
 sdm_objM <- sim_func(names_x1M,name_y, all_dataM)
 
@@ -275,17 +272,14 @@ roc_object <- roc(all_dataM$PA, prediction)
 AUC <- round(as.numeric(auc(roc_object)), 3)
 
 #### Plot ####
-
-# world_vect <- st_read(system.file("shape/nc.shp", package="sf"))
 country_geom <- world[world$name == hh[m], ]
 reg_ext <- ext(country_geom)
 
-# rangemax <- max(range(Newpred$predictions, na.rm = T))
-# rangemax
+rangemax <- max(range(Newpred$predictions, na.rm = T))
+rangemax
 
 colour_breaks <- c(0, rangemax/3, rangemax/2, rangemax) # Entrer manuellement la préférence de l'échelle
 colours <- c("yellow", "orange", "red", "darkred")
-
 
 image <- ggplot(Newpred) +
   geom_tile(aes(x = x, y = y, fill = predictions)) +
@@ -335,11 +329,6 @@ sdm_objF
 length(all_aquaF2$species)
 
 #### Predictions ####
-
-# world3 <- world2 %>% # Get geometry of these 20 countries in order to make predictions on them after
-#   tidyterra::filter(name %in% hh)
-
-
 # Newdat is supposed to be the full coverage of the area of interest (rasters covering the whole area)
 NewDat <- readRDS("env_df_pred_all.rds")
 
@@ -412,5 +401,4 @@ img
 # setwd("C:/Users/User/Desktop/Internship/Images")
 ggsave("Zimbabwe_Mugil_cephalus.pdf", img, width = 8, height = 5)
 gc()
-
 

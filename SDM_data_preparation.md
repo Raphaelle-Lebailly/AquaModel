@@ -54,11 +54,11 @@ We end up with countries with buffered coasts and normal geometry (e.g. Canada b
 <img src="image-2.png" width=250 height=200> <img src="image-3.png" width=250 height=200>
 
 
-<span style="color:#f53d49;"> ISSUE: The polygons that overlap for 1 country end up merging successfully, but not for multiple countries.  </span>
+<span style="color:#f53d49;"> ISSUE: The polygons that overlap for 1 country end up merging successfully, but not for multiple countries. We have to select one over the other in order to suppress this issue. The file 'world_borders_with_buffer.rds' takes this into account. </span>
 
 
 ### 2. Species data
-After loading the data with the real_bg.rds file and 'rfishbase' package, we need to match the data to the countries' new geometries that act like molds.
+After loading the data, we need to match the data to the countries' new geometries that act like molds.
 
 To do so, we want to **associate the new geometry to the countries name**, and use this information to do the reverse geolocation. 
 
@@ -313,46 +313,13 @@ Now, I need to combine all of the species into one dataframe. Instead of having 
 
 
 
-# References
-Nguyen & Leung, 2022
-
-
 -------------------------------------------------------------------------
-
-# List of things to do
-
-Raph: 
-- 
-- Look for freshwater environmental data. Lakes and rivers. 
-- *How to handle different water bodies* * --> 2 options. 1. differentiate the water bodies OR 2. apply filters. How to overlay environmental variable and physical structures (Lakes) 
-- Apply some sort of buffer to handle coastal species. Keep species occurrences from 22kms from the coast (~ 7 cells). Only for borders touching the sea and not the land.
-
-
-Maia:
-- What's done in aquaculture concerning lakes
-- Nutrition --> establish a scaling per fish and per nutrient
-
-Overall --> link / quantify fish with needs. 
-
-Ideas: 
-- Estimate areas where species can live > a threshold, count the nb of cells that represents and translate in terms of area covered. => 1rst step to estimate a "quantity" or "how much" a species can be grown in a country. 
-- 
-
-Keep in mind (project and report prospects)
-- The resolution influences the predictive performance of a SDM. The link isn't proportional, which highliths the presence of an optimum. Depends on the species. (Lowen, 2016)
-- Definition of pseudoabsences and why they are useful. 1. Assess a better model with more accurate coefficients (look into details to be sure) 2. Assess the differences of sampling effort over all area of distribution. 
-
-Questions:
-- What about GBIF data that covers 1873-2019 (with species data way more important in 1960's - 1980's)
-- How to quantify fish depending on needs and how geographic data is interesting to implement concretely?
-
-
-
+#### Miscellaneous
+**Species Location Points**
 ![alt text](image.png)
 
 
-# Get coastal data
-
+**Get coastal data**
 ```{r}
 # Installer et charger les packages nécessaires
 install.packages("rnaturalearth")
@@ -408,7 +375,3 @@ plot(coastal_buffer_vect, col = "red", add = TRUE, alpha = 0.5)
 # coastal_buffer_vect est maintenant un SpatVecteur avec le buffer appliqué aux frontières côtières
 
 ```
-
-
-Issues with buffer : overlaps or merge not complete
-![alt text](image-1.png) (example of Cameroon)
